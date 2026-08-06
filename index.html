@@ -610,8 +610,11 @@ tbody tr:last-child td{border-bottom:none}
 
 /* ---------- roles ---------- */
 body.viewer .adm{display:none!important}
-body.viewer td.ed{cursor:default}
-body.viewer td.ed:hover{background:inherit!important;box-shadow:none}
+/* Viewers may still click an editable cell — the click explains how to get
+   edit access rather than doing nothing — so keep it looking interactive,
+   just without the "you may type here" highlight an editor gets. */
+body.viewer td.ed,body.viewer .dt-v.ed{cursor:pointer}
+body.viewer td.ed:hover{background:var(--panel2)!important;box-shadow:none}
 #rolebadge{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}
 .rb{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;
   border-radius:var(--r-full);font-size:11px;font-weight:600;letter-spacing:.2px}
@@ -3338,10 +3341,36 @@ const TOOLS    = ['Claude AI','Claude + Excel','Claude Code','ChatGPT','Custom S
 
 let editing = null;   // {i, field, td, prev}
 
+/* Every editable cell in all three views — the register table, the Money
+   Saved modal, and the Full Details panel — funnels through edit(). It used
+   to `return` silently when the visitor lacked write permission, which read
+   as "the cell just isn't clickable": no cursor change, no message, nothing.
+   These two say plainly why the click did nothing, and offer the way out. */
+function editBlocked(){
+  if(!currentUser){
+    toast('You are in View Only mode — sign in to edit.', 'error');
+    setSync('View Only — sign in to edit any field.','var(--warn)');
+    // take them straight to the fix, unless a modal is already open (the
+    // Money Saved table lives in one, and stacking over it is disorienting)
+    if(!document.getElementById('ovl')) login();
+  } else {
+    toast('Your account is View Only. Ask an admin for Editor access.', 'error');
+    setSync('Your account does not have permission to edit.','var(--danger)');
+  }
+  return false;
+}
+function editBlockedOwner(row){
+  const owner = allAccounts().find(a=>String(a.id)===String(row && row.ownerId));
+  toast(owner ? `This automation belongs to ${owner.name} — you can view it but not edit it.`
+              : 'This automation belongs to another user — you can view it but not edit it.', 'error');
+  setSync('Read-only: this row belongs to another user’s workspace.','var(--warn)');
+  return false;
+}
+
 /* ---- open an editor in a cell ---- */
 function edit(i, field, td){
-  if(!can('write')) return;
-  if(data[i] && !ownsRow(data[i])) return denied();
+  if(!can('write')) return editBlocked();
+  if(data[i] && !ownsRow(data[i])) return editBlockedOwner(data[i]);
   if(editing) return;                        // one at a time
   if(td.querySelector('.cell-ed')) return;
   const r = data[i]; if(!r) return;

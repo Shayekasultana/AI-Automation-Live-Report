@@ -1703,7 +1703,7 @@ function render(){
     <tr><th>Department</th><th>Automation Task</th><th>Manual Process</th><th>Assigned Users</th>
     <th>Developer</th><th>Status</th><th>Priority</th><th>Tool</th><th>Hrs/Mo</th><th>Saved/Mo</th><th>Start</th><th>Notes</th><th>Key Objective</th><th>Key Achievement</th><th>Key Process Automation</th><th>Report</th><th class="adm"></th></tr></thead><tbody>
     ${rows.map(({r,i})=>`<tr data-row="${i}" class="${ownsRow(r)?'':'row-readonly'}">
-      <td><b>${esc(r.dept)}</b></td>
+      <td class="ed" data-f="dept" onclick="edit(${i},'dept',this)"><b>${esc(r.dept)}</b></td>
       <td class="ed" data-f="task" onclick="edit(${i},'task',this)">${esc(r.task)||'<i style="color:var(--mut)">— not defined —</i>'}</td>
       <td class="ed" data-f="manual" style="color:var(--mut)" onclick="edit(${i},'manual',this)">${esc(r.manual)||'—'}</td>
       <td class="ed" data-f="owners" style="min-width:150px" onclick="edit(${i},'owners',this)">${(r.owners||[]).map(o=>`<span class="tag">${esc(o)}</span>`).join('')||'—'}</td>
@@ -1714,7 +1714,7 @@ function render(){
       <td class="ed" data-f="hours" onclick="edit(${i},'hours',this)">${r.hours||0}</td>
       <td class="ed" data-f="monthlyCostSaved" onclick="edit(${i},'monthlyCostSaved',this)">${r.monthlyCostSaved!==''&&r.monthlyCostSaved!=null
             ? `<b style="color:#4E7A22">${fmtMoney(r.monthlyCostSaved,r.currency||'BDT')}</b>` : '—'}</td>
-      <td class="ed" data-f="date" onclick="edit(${i},'date',this)">${r.date||'—'}</td>
+      <td class="ed" data-f="date" onclick="edit(${i},'date',this)">${fmtDateCell(r.date)}</td>
       <td class="ed" data-f="notes" style="color:var(--mut);max-width:170px" onclick="edit(${i},'notes',this)">${esc(r.notes)||'—'}</td>
       <td class="ed" data-f="keyObjective" style="color:var(--mut);max-width:200px" onclick="edit(${i},'keyObjective',this)">${esc(r.keyObjective)||'—'}</td>
       <td class="ed" data-f="keyAchievement" style="min-width:170px;max-width:230px" onclick="edit(${i},'keyAchievement',this)">${(r.keyAchievement||[]).length?`<ul class="cell-bul">${r.keyAchievement.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:'—'}</td>
@@ -1803,7 +1803,7 @@ function render(){
             ${efield('Status', 'status', `<span class="pill s-${r.status.replace(/\s/g,'')}">${r.status}</span>`)}
             ${efield('Priority', 'prio', `<span class="pill p-${r.prio}">${r.prio}</span>`)}
             ${efield('Hours Saved / Month', 'hours', (r.hours||0)+' hrs')}
-            ${efield('Start Date', 'date', r.date||'—')}
+            ${efield('Start Date', 'date', fmtDateCell(r.date))}
             ${efield('Assigned Users', 'owners', tags(r.owners))}
             ${efield('Developer', 'developer', tags(r.developer))}
             ${field('Created By', esc(r.createdBy)||'—')}
@@ -3393,7 +3393,7 @@ function edit(i, field, td){
       html=`<div class="timerow"><input class="cell-ed" type="number" min="0" step="0.5" value="${r.manTime!==''&&r.manTime!=null?r.manTime:''}" placeholder="e.g. 45">`
          + `<select class="cell-ed-unit"><option value="min"${r.manUnit!=='hr'?' selected':''}>Minutes</option><option value="hr"${r.manUnit==='hr'?' selected':''}>Hours</option></select></div>`;
       break;
-    case 'date':  html=`<input class="cell-ed" type="date" value="${esc(r.date||'')}">`; break;
+    case 'date':  html=`<input class="cell-ed" type="date" value="${esc(dateVal(r.date))}">`; break;
     case 'manual':
     case 'notes': html=`<textarea class="cell-ed" rows="3">${esc(r[field]||'')}</textarea>`; break;
     case 'keyObjective': html=`<textarea class="cell-ed" rows="4" placeholder="Main business objective">${esc(r.keyObjective||'')}</textarea>`; break;
@@ -3529,9 +3529,14 @@ async function commitEdit(){
   const cell = editing; editing = null;
 
   render();
-  const back = document.querySelector(`tr[data-row="${i}"] td[data-f="${field}"]`)
+  if(document.getElementById('money_table')) renderMoneyTable();   // rebuild before we look the cell up
+  // When a modal is open the edit happened inside it, so confirm there first —
+  // otherwise fields that exist in BOTH places (task, dept, status, runs,
+  // monthlyCostSaved) would flash "Saved" on the register table hidden behind it.
+  const inModal = !!document.getElementById('ovl');
+  const back = (inModal ? document.querySelector(`[data-dt-row="${i}"][data-f="${field}"]`) : null)
+            || document.querySelector(`tr[data-row="${i}"] td[data-f="${field}"]`)
             || document.querySelector(`[data-dt-row="${i}"][data-f="${field}"]`);
-  if(document.getElementById('money_table')) renderMoneyTable();
   if(ok){
     if(back) flashCell(back, 'Saved', true);
   } else {
@@ -3683,6 +3688,35 @@ function fmtDateShort(iso){
   if(!iso) return '';
   const d=new Date(iso); if(isNaN(d)) return '';
   return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+}
+
+/* Start Date arrives in three different shapes: a plain yyyy-mm-dd string, an
+   ISO timestamp, or — when the backend JSON-stringifies a real Date cell — an
+   ISO timestamp wrapped in literal quote characters ("2026-07-27T18:00:00.000Z").
+   Normalise all three to yyyy-mm-dd, which is the only form <input type="date">
+   will accept, so the cell both reads correctly and opens with its value.
+
+   The conversion uses LOCAL date parts deliberately: a Sheet date stored as
+   local midnight arrives as the PREVIOUS day in UTC, so reading the UTC part
+   would shift every start date back by one. */
+function dateVal(v){
+  if(v==='' || v==null) return '';
+  const s=String(v).trim().replace(/^"+|"+$/g,'');     // strip any JSON quoting
+  if(!s) return '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;          // already normalised
+  const d=new Date(s);
+  if(isNaN(d)) return '';
+  const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+/* human-readable form for a Start Date table cell */
+function fmtDateCell(v){
+  const s=dateVal(v);
+  if(!s) return '—';
+  const [y,m,d]=s.split('-').map(Number);
+  const dt=new Date(y, m-1, d);                        // local, so no TZ shift
+  return isNaN(dt) ? esc(s)
+    : dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
 }
 function fmtStamp(iso){
   if(!iso) return '';
@@ -3972,10 +4006,10 @@ function paintProcess(){
 /* generic table builder */
 /* the Money Saved / Month KPI table — re-rendered after every edit (called
    from commitEdit) so changes appear immediately without closing the modal.
-   Manual Cost, Automation Cost, Saved/Execution, Runs/Mo, Monthly Saved, and
-   Status are all click-to-edit, using the exact same edit()/commitEdit()
-   engine as the main register table. Automation name and Department stay
-   read-only here (edit those from the register or Full Details instead). */
+   Every column here is click-to-edit — Automation, Department, Manual Cost,
+   Automation Cost, Saved/Execution, Runs/Mo, Monthly Saved and Status — using
+   the exact same edit()/commitEdit() engine as the main register table, so a
+   correction can be made right where the wrong number is noticed. */
 function renderMoneyTable(){
   const totalsEl=document.getElementById('money_totals');
   const tableEl=document.getElementById('money_table');
@@ -4009,8 +4043,8 @@ function renderMoneyTable(){
     ${rows.map(({r,i})=>{
       const c=r.currency||'BDT', neg=(Number(r.costSavedPerExecution)||0)<0;
       return `<tr>
-        <td><b>${esc(r.task)}</b></td>
-        <td>${esc(r.dept)}</td>
+        <td ${ed(i,'task')}><b>${esc(r.task)}</b></td>
+        <td ${ed(i,'dept')}>${esc(r.dept)}</td>
         <td ${ed(i,'manualProcessCost')}>${fmtMoney(r.manualProcessCost,c)}</td>
         <td ${ed(i,'automationProcessCost')}>${fmtMoney(r.automationProcessCost,c)}</td>
         <td ${ed(i,'costSavedPerExecution')}>${neg?`<span style="color:var(--danger)">${fmtMoney(r.costSavedPerExecution,c)}</span>`
@@ -4558,6 +4592,7 @@ async function cloudLoad(manual){
       }
       if(j.roster && Object.keys(j.roster).length) roster = j.roster;
       if(j.data) data = j.data.map(r=>({...r, owners:r.owners||[], prio:r.prio||'Medium',
+        date:dateVal(r.date),
         autoTime:r.autoTime??'', autoUnit:r.autoUnit||'min',
         manTime:r.manTime??'',  manUnit:r.manUnit||'min', runs:Number(r.runs)||0,
         manualProcessCost:r.manualProcessCost??'', automationProcessCost:r.automationProcessCost??'',

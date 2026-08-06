@@ -814,6 +814,155 @@ body.admin .dt-v.ed:hover{background:var(--acc2);box-shadow:inset 0 0 0 1px var(
 .lnk[disabled]:hover{background:var(--panel);border-color:var(--line);transform:none}
 
 /* ============================================================
+   SETTINGS MODULE
+   Additive only — every selector is namespaced .set-* / .sw, and the
+   theme work is done by overriding the design tokens already declared
+   in :root rather than restyling any component.
+   ============================================================ */
+.set-wrap{display:grid;grid-template-columns:238px minmax(0,1fr);gap:20px;align-items:start}
+.set-nav{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:8px;box-shadow:var(--sh-sm);position:sticky;top:var(--s4)}
+.set-nav-item{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:none;
+  background:none;box-shadow:none;border-radius:var(--r-sm);cursor:pointer;font-size:13px;
+  font-weight:500;color:var(--txt2);text-align:left;transition:all var(--fast) var(--ease)}
+.set-nav-item:hover{background:var(--panel2);color:var(--txt);transform:none;box-shadow:none}
+.set-nav-item.on{background:var(--acc2);color:var(--acc);font-weight:600;box-shadow:none}
+.set-nav-item .ic{flex:0 0 auto}
+.set-panel{display:none}
+.set-panel.on{display:block;animation:afFade .18s var(--ease) both}
+.set-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:var(--s5) var(--s6);box-shadow:var(--sh-sm);margin-bottom:var(--s4)}
+.set-card-head{margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.set-card-title{font-size:16px;font-weight:700;color:var(--txt);letter-spacing:-.2px}
+.set-card-sub{font-size:12.5px;color:var(--mut);margin-top:3px;line-height:1.5}
+.set-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s4) 20px}
+.set-grid-1{grid-template-columns:1fr}
+.set-field{display:flex;flex-direction:column;min-width:0}
+.set-field label{font-size:12.5px;font-weight:600;color:var(--txt2);text-transform:none;
+  letter-spacing:0;margin-bottom:7px}
+.set-field input,.set-field select,.set-field textarea{height:42px;padding:10px 13px;
+  border-radius:10px;font-size:13.5px}
+.set-field textarea{height:auto;min-height:74px;font-family:inherit}
+.set-hint{font-size:11.5px;color:var(--mut2);margin-top:6px;line-height:1.5}
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:14px 0;border-bottom:1px solid var(--line2)}
+.set-row:last-child{border-bottom:none}
+.set-row-txt{min-width:0}
+.set-row-t{font-size:13.5px;font-weight:600;color:var(--txt)}
+.set-row-d{font-size:12px;color:var(--mut);margin-top:2px;line-height:1.5}
+.set-row-act{flex:0 0 auto;display:flex;align-items:center;gap:9px}
+/* toggle switch */
+.sw{position:relative;width:42px;height:24px;flex:0 0 auto;border:none;padding:0;
+  border-radius:var(--r-full);background:var(--line3);cursor:pointer;box-shadow:none;
+  transition:background var(--base) var(--ease)}
+.sw:hover{background:var(--mut2);transform:none;box-shadow:none}
+.sw.on,.sw.on:hover{background:var(--acc)}
+.sw::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
+  background:#fff;box-shadow:var(--sh-sm);transition:transform var(--base) var(--ease)}
+.sw.on::after{transform:translateX(18px)}
+.sw[disabled]{opacity:.42;cursor:not-allowed}
+.sw[disabled]:hover{background:var(--line3)}
+/* status + notice blocks */
+.set-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.set-stat{display:flex;align-items:center;gap:11px;padding:13px 15px;border-radius:var(--r-md);
+  background:var(--panel2);border:1px solid var(--line)}
+.set-stat-ic{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex:0 0 auto;
+  background:var(--acc2);color:var(--acc)}
+.set-stat b{font-size:13.5px;color:var(--txt);display:block;line-height:1.25}
+.set-stat span{font-size:11.5px;color:var(--mut)}
+.set-note{display:flex;gap:11px;align-items:flex-start;border-radius:var(--r-md);
+  padding:13px 15px;margin-bottom:16px;background:var(--warn-bg);border:1px solid #FDE68A}
+.set-note .ic{color:var(--warn);flex:0 0 auto;margin-top:1px}
+.set-note-t{font-size:12.5px;font-weight:700;color:#92400E}
+.set-note-d{font-size:12px;color:#92400E;margin-top:2px;line-height:1.55}
+.set-note.info{background:var(--acc2);border-color:var(--acc3)}
+.set-note.info .ic{color:var(--acc)}
+.set-note.info .set-note-t{color:var(--dbl-navy)}
+.set-note.info .set-note-d{color:var(--txt2)}
+/* sticky action bar */
+.set-actions{display:flex;gap:11px;align-items:center;flex-wrap:wrap;position:sticky;bottom:var(--s3);
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:13px 17px;box-shadow:var(--sh-md);margin-top:var(--s4);z-index:5}
+.set-actions .set-dirty{margin-left:auto;font-size:12px;color:var(--warn);font-weight:600}
+/* avatar / logo */
+.set-avatar{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.set-avatar-img{width:66px;height:66px;border-radius:14px;object-fit:contain;flex:0 0 auto;
+  background:var(--panel3);border:1px solid var(--line);padding:5px}
+.set-avatar-ph{width:66px;height:66px;border-radius:14px;flex:0 0 auto;display:grid;place-items:center;
+  background:var(--acc2);color:var(--acc);border:1px solid var(--acc3);font-size:23px;font-weight:700}
+/* theme + accent pickers */
+.set-themes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.set-theme{border:2px solid var(--line);border-radius:var(--r-md);padding:11px;cursor:pointer;
+  background:var(--panel);text-align:center;box-shadow:none;transition:all var(--fast) var(--ease);
+  display:block;width:100%}
+.set-theme:hover{border-color:var(--line3);transform:none;box-shadow:none}
+.set-theme.on{border-color:var(--acc);background:var(--acc2)}
+.set-theme-sw{height:42px;border-radius:8px;margin-bottom:9px;border:1px solid var(--line3)}
+.set-theme-name{font-size:12.5px;font-weight:600;color:var(--txt2)}
+.set-accents{display:flex;gap:10px;flex-wrap:wrap}
+.set-accent{width:34px;height:34px;border-radius:9px;border:2px solid transparent;cursor:pointer;
+  padding:0;box-shadow:var(--sh-xs)}
+.set-accent:hover{transform:none}
+.set-accent.on{border-color:var(--txt)}
+.set-kv{display:flex;justify-content:space-between;gap:14px;padding:11px 0;
+  border-bottom:1px solid var(--line2);font-size:13px}
+.set-kv:last-child{border-bottom:none}
+.set-kv-k{color:var(--mut)}
+.set-kv-v{color:var(--txt);font-weight:600;text-align:right;word-break:break-word}
+@media(max-width:900px){
+  .set-wrap{grid-template-columns:1fr}
+  .set-nav{position:static;display:flex;gap:4px;overflow-x:auto;padding:6px}
+  .set-nav-item{white-space:nowrap;width:auto}
+  .set-grid{grid-template-columns:1fr}
+  .set-themes{grid-template-columns:1fr}
+}
+
+/* ---------- DARK THEME ----------
+   Applied by stamping data-theme="dark" on <html>. It only re-declares the
+   design tokens, so every component follows automatically. The handful of
+   rules below cover places where a literal colour was used instead of a
+   token (sticky table headers, zebra striping, the modal header blur). */
+:root[data-theme="dark"]{
+  --bg:#0B1220; --panel:#141D2E; --panel2:#1B2537; --panel3:#222E44;
+  --line:#26334A; --line2:#1E2A3E; --line3:#3A4A66;
+  --txt:#E8EEF7; --txt2:#C2CEE0; --mut:#93A3BC; --mut2:#6F7F99;
+  --acc2:#152A3F; --acc3:#1E3E5C;
+  --ok-bg:#0E2A22; --warn-bg:#2E2410; --danger-bg:#331520;
+  --hold-bg:#221A38; --info-bg:#0C2537;
+  --sh-xs:0 1px 2px rgba(0,0,0,.35);
+  --sh-sm:0 1px 3px rgba(0,0,0,.4),0 1px 2px rgba(0,0,0,.3);
+  --sh-md:0 4px 12px rgba(0,0,0,.45),0 1px 3px rgba(0,0,0,.35);
+  --sh-lg:0 12px 28px rgba(0,0,0,.5),0 4px 8px rgba(0,0,0,.35);
+  --sh-xl:0 24px 56px rgba(0,0,0,.6),0 8px 16px rgba(0,0,0,.4);
+}
+:root[data-theme="dark"] body{background-image:
+  radial-gradient(ellipse 70% 44% at 8% -4%, rgba(17,117,188,.16) 0%, transparent 62%),
+  radial-gradient(ellipse 62% 40% at 96% 2%, rgba(141,198,65,.10) 0%, transparent 58%)}
+:root[data-theme="dark"] th{background:#1B2537}
+:root[data-theme="dark"] tbody tr:nth-child(even) td{background:#182236}
+:root[data-theme="dark"] .mhead{background:rgba(20,29,46,.86)}
+:root[data-theme="dark"] .logo{background:#E8EEF7}
+:root[data-theme="dark"] .sk{background:#1B2537}
+:root[data-theme="dark"] .sk::after{background:linear-gradient(90deg,transparent 0%,
+  rgba(255,255,255,.07) 50%,transparent 100%)}
+:root[data-theme="dark"] .nc-item.unread{background:#152232}
+:root[data-theme="dark"] .set-note{background:#2E2410;border-color:#5A4415}
+:root[data-theme="dark"] .set-note-t,:root[data-theme="dark"] .set-note-d{color:#FCD98B}
+:root[data-theme="dark"] .sw::after{background:#E8EEF7}
+:root[data-theme="dark"] input,:root[data-theme="dark"] select,
+:root[data-theme="dark"] textarea{background:var(--panel2)}
+:root[data-theme="dark"] .af-auto-input{background:var(--panel3)!important}
+
+/* ---------- COMPACT MODE ---------- */
+:root[data-compact="1"] body{padding:var(--s4)}
+:root[data-compact="1"] td,:root[data-compact="1"] th{padding-top:7px;padding-bottom:7px}
+:root[data-compact="1"] .card,:root[data-compact="1"] .panel,
+:root[data-compact="1"] .tblcard,:root[data-compact="1"] .set-card{padding:var(--s4)}
+:root[data-compact="1"] .kpi{padding:var(--s3) var(--s4)}
+:root[data-compact="1"] .kpi b{font-size:24px}
+:root[data-compact="1"] .set-row{padding:10px 0}
+
+/* ============================================================
    NOTIFICATION CENTER
    Purely additive — every selector is namespaced .nc-* so nothing
    above is overridden. The panel is position:fixed and lives on
@@ -1026,6 +1175,7 @@ body.admin .dt-v.ed:hover{background:var(--acc2);box-shadow:inset 0 0 0 1px var(
   <button class="tab" id="tb_roster" onclick="setTab('roster')"><svg class="ic ic-sm"><use href="#i-users"/></svg> Department Roster</button>
   <button class="tab" id="tb_detail" onclick="setTab('detail')"><svg class="ic ic-sm"><use href="#i-inbox"/></svg> Full Details</button>
   <button class="tab" id="tb_analytics" onclick="setTab('analytics')"><svg class="ic ic-sm"><use href="#i-trend"/></svg> Analytics</button>
+  <button class="tab" id="tb_settings" onclick="setTab('settings')"><svg class="ic ic-sm"><use href="#i-settings"/></svg> Settings</button>
 </div>
 
 <div id="ws_banner" class="ws-banner" style="display:none"></div>
@@ -1281,6 +1431,14 @@ body.admin .dt-v.ed:hover{background:var(--acc2);box-shadow:inset 0 0 0 1px var(
   <div class="roster" id="rosterview"></div>
 </div>
 
+<!-- ============ SETTINGS ============ -->
+<div id="v_settings" style="display:none">
+  <div class="set-wrap">
+    <nav class="set-nav" id="set_nav" aria-label="Settings sections"></nav>
+    <div class="set-body" id="set_body"></div>
+  </div>
+</div>
+
 <div class="tblcard" id="v_detail" style="display:none">
   <h3 class="sec">Full Details</h3>
   <p style="color:var(--mut);font-size:12.5px;margin:-4px 0 14px">Every field entered for each automation. Click a task to expand all its details.</p>
@@ -1332,11 +1490,23 @@ document.getElementById('stamp').textContent = new Date().toLocaleString('en-GB'
 
 /* ---------- TABS ---------- */
 function setTab(t){
+  // leaving Settings with unsaved edits: confirm before the view is torn down
+  if(tab==='settings' && t!=='settings' && typeof setDirty!=='undefined' && setDirty){
+    if(!confirm('You have unsaved settings changes.\n\nLeave this page and discard them?')) return;
+    setDiscard();
+  }
   tab=t;
-  ['register','user','roster','detail','analytics'].forEach(x=>{
+  ['register','user','roster','detail','analytics','settings'].forEach(x=>{
     document.getElementById('v_'+x).style.display = (x===t?'block':'none');
     document.getElementById('tb_'+x).classList.toggle('on', x===t);
   });
+  // Settings is a full page of its own: the KPI strip and welcome card belong
+  // to the dashboard views and would only be noise above it.
+  const onSettings = (t==='settings');
+  const kp=document.getElementById('kpis'); if(kp) kp.style.display = onSettings?'none':'';
+  const wc=document.getElementById('welcome');
+  if(wc && wc.innerHTML.trim()) wc.style.display = onSettings?'none':'block';
+  if(onSettings) renderSettings();
   // the Add form and the department/user charts show only on register/user tabs
   // AND only for users who can write (editors, admins, super admin) — viewers
   // never see the form. Analytics now lives on its own dedicated tab.
@@ -2770,8 +2940,13 @@ async function doLogin(){
     return;
   }
   role = acct.role;
-  currentUser = {id:acct.id, name:acct.name, user:acct.user, role:acct.role};
-  try{ sessionStorage.setItem('dbl_session', JSON.stringify(currentUser)); }catch(e){}
+  currentUser = {id:acct.id, name:acct.name, user:acct.user, role:acct.role, email:acct.email||''};
+  // Remember Me (Settings → Security) decides whether the session outlives the tab
+  try{
+    sessionStorage.setItem('dbl_session', JSON.stringify(currentUser));
+    if(SETTINGS.security.rememberMe) localStorage.setItem('dbl_session', JSON.stringify(currentUser));
+    else localStorage.removeItem('dbl_session');
+  }catch(e){}
   recordLogin(acct.user);
   logAudit('Login', {user:acct.name, email:acct.email||'', dept:acct.dept||'', status:'Success', oldValue:'', newValue:ROLES[acct.role].label});
   startPresence();
@@ -2793,7 +2968,8 @@ function logout(){
   if(currentUser) logAudit('Logout', {user:currentUser.name, email:currentUser.email||''});
   stopPresence();
   role='viewer'; currentUser=null;
-  try{ sessionStorage.removeItem('dbl_session'); }catch(e){}
+  try{ sessionStorage.removeItem('dbl_session'); localStorage.removeItem('dbl_session'); }catch(e){}
+  clearTimeout(_idleTimer);
   if(typeof editing!=='undefined' && editing) cancelEdit();
   startPresence();   // still a viewer, just anonymous now
   applyRole(); render();
@@ -3024,8 +3200,9 @@ function updateResetConfirmMatch(){
   if(p1===p2){ el.innerHTML='<span style="color:var(--ok)">Passwords match \u2713</span>'; }
   else { el.innerHTML='<span style="color:var(--danger)">Passwords do not match</span>'; }
 }
+/* defers to the configurable policy in Settings → Security */
 function passwordMeetsRequirements(pw){
-  return pw.length>=8 && /[A-Z]/.test(pw) && /[a-z]/.test(pw) && /[0-9]/.test(pw) && /[^A-Za-z0-9]/.test(pw);
+  return passwordPolicyErrors(pw).length===0;
 }
 
 async function submitPasswordReset(token, email, username){
@@ -3125,6 +3302,9 @@ function isCompanyEmail(email){
   const at=String(email).toLowerCase().split('@');
   if(at.length!==2) return false;
   const domain=at[1];
+  // the domain configured in Settings → Google Workspace always counts
+  const org=(SETTINGS && SETTINGS.google && SETTINGS.google.orgDomain||'').trim().toLowerCase();
+  if(org && domain===org) return true;
   if(DBL_DOMAINS.includes(domain)) return true;
   // also accept any DBL-style domain: dbl-xxxx.com / dbl-xxxx.com.bd, etc.
   return /^dbl[-.][a-z0-9-]+\.(com|net|org|com\.bd)$/.test(domain);
@@ -3147,10 +3327,8 @@ async function doSignup(){
   if(!isCompanyEmail(email)){ err('Please use your DBL company email (e.g. @dbl-group.com, @dbl-pharma.com).'); return; }
   if(!p1){ err('Password is required.'); return; }
   if(!p2){ err('Please confirm your password.'); return; }
-  if(p1.length<8){ err('Password must be at least 8 characters.'); return; }
-  if(!(/[a-z]/.test(p1)&&/[A-Z]/.test(p1)&&/[0-9]/.test(p1)&&/[^A-Za-z0-9]/.test(p1))){
-    err('Password needs an uppercase letter, a lowercase letter, a number, and a special character.'); return;
-  }
+  const pwProblems = passwordPolicyErrors(p1);   // policy comes from Settings → Security
+  if(pwProblems.length){ err('Password needs '+pwProblems.join(', ')+'.'); return; }
   if(p1!==p2){ err('Passwords do not match.'); document.getElementById('su_p2').value=''; return; }
 
   // check the Sheet too, so the same username can't be taken on another device
@@ -3240,6 +3418,8 @@ function applyRole(){
   document.querySelectorAll('[data-perm="export"]').forEach(el=>{
     el.style.display = can('export') ? '' : 'none';
   });
+  // Settings hides admin-only sections by role, so redraw it when role changes
+  if(tab==='settings' && typeof renderSettings==='function') renderSettings();
   paintMyPresence();
 }
 
@@ -3426,7 +3606,9 @@ function deleteUserAccount(id){
 
 /* restore session for this browser tab only */
 try{
-  const sv=JSON.parse(sessionStorage.getItem('dbl_session')||'null');
+  // sessionStorage first (this tab), then localStorage if Remember Me was on
+  const sv=JSON.parse(sessionStorage.getItem('dbl_session')
+                   || localStorage.getItem('dbl_session') || 'null');
   if(sv && allAccounts().some(x=>x.user===sv.user && x.role===sv.role && !x.disabled)){
     currentUser=sv; role=sv.role;
   }
@@ -3843,8 +4025,14 @@ function fmtDateCell(v){
   if(!s) return '—';
   const [y,m,d]=s.split('-').map(Number);
   const dt=new Date(y, m-1, d);                        // local, so no TZ shift
-  return isNaN(dt) ? esc(s)
-    : dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  if(isNaN(dt)) return esc(s);
+  const p=n=>String(n).padStart(2,'0');
+  switch((typeof SETTINGS!=='undefined' && SETTINGS.general.dateFormat)||'dd MMM yyyy'){
+    case 'dd/MM/yyyy': return `${p(d)}/${p(m)}/${y}`;
+    case 'MM/dd/yyyy': return `${p(m)}/${p(d)}/${y}`;
+    case 'yyyy-MM-dd': return s;
+    default: return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  }
 }
 function fmtStamp(iso){
   if(!iso) return '';
@@ -4681,6 +4869,790 @@ document.addEventListener('keydown', e=>{
   }
 });
 
+/* ================= SETTINGS MODULE =================
+   Settings live in localStorage and are applied for real: the theme, accent,
+   compact mode, default currency, date format, session timeout, password
+   policy, notification category filters, organisation domain and the Google
+   Sheet API URL all take effect immediately.
+
+   Honesty note on what is NOT wired up, and why. A few requested items need
+   infrastructure this app does not have, and a toggle that silently does
+   nothing is worse than no toggle. These are shown with their real state and
+   an explanation instead of a switch that pretends:
+     - Two-Factor Authentication — auth is client-side; a 2FA prompt a user
+       can skip with dev tools is decoration, not security.
+     - Google Workspace connect / Client ID — needs a real OAuth client and a
+       server-side token exchange.
+     - Slack / Microsoft Teams — their webhooks reject browser CORS, so a
+       message has to be relayed by Code.gs.
+     - API keys — nothing server-side exists to authenticate them against.
+     - Email notifications — only Code.gs can send mail (see MailApp).
+   Everything else on this page genuinely works.
+==================================================== */
+const APP_VERSION = '2.4.0';
+const SETTINGS_KEY = 'dbl_settings';
+
+const DEFAULT_SETTINGS = {
+  general:{ companyName:'DBL Group', companyLogo:'', companyEmail:'', companyPhone:'',
+            website:'', timezone:'Asia/Dhaka', language:'en-GB', currency:'BDT',
+            dateFormat:'dd MMM yyyy' },
+  company:{ legalName:'', address:'', industry:'', registrationNo:'', size:'', fiscalStart:'January' },
+  security:{ sessionTimeout:0, rememberMe:false, pwMinLength:8,
+             pwUpper:true, pwLower:true, pwNumber:true, pwSpecial:true },
+  google:{ clientId:'', orgDomain:'dbl-group.com' },
+  notifications:{ browser:false, system:true, automation:true, security:true,
+                  user:true, backup:true, sync:true, audit:true, workspace:true },
+  backup:{ autoBackup:false, schedule:'daily', lastBackup:'' },
+  api:{ sheetUrl:'', slackWebhook:'', teamsWebhook:'', customWebhook:'' },
+  appearance:{ theme:'light', accent:'#1175BC', compact:false }
+};
+
+/* deep-merge stored values over the defaults so a new setting added later
+   never arrives as undefined for someone with an existing saved blob */
+function loadSettings(){
+  let stored={};
+  try{ stored=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}'); }catch(e){ stored={}; }
+  const out={};
+  Object.keys(DEFAULT_SETTINGS).forEach(sec=>{
+    out[sec]=Object.assign({}, DEFAULT_SETTINGS[sec], stored[sec]||{});
+  });
+  return out;
+}
+function persistSettings(s){
+  try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); return true; }
+  catch(e){ return false; }
+}
+
+let SETTINGS = loadSettings();
+let setDraft = JSON.parse(JSON.stringify(SETTINGS));   // edits land here first
+let setDirty = false;
+let setSection = 'general';
+let _setSaveTimer = null;
+
+const SET_SECTIONS = [
+  {key:'general',      label:'General',           icon:'i-settings'},
+  {key:'company',      label:'Company',           icon:'i-grid'},
+  {key:'profile',      label:'Profile',           icon:'i-user'},
+  {key:'security',     label:'Security',          icon:'i-shield'},
+  {key:'google',       label:'Google Workspace',  icon:'i-cloud'},
+  {key:'notifications',label:'Notifications',     icon:'i-bell'},
+  {key:'departments',  label:'Departments',       icon:'i-inbox'},
+  {key:'users',        label:'Users',             icon:'i-users'},
+  {key:'workspaces',   label:'Workspaces',        icon:'i-target'},
+  {key:'backup',       label:'Backup & Restore',  icon:'i-save'},
+  {key:'api',          label:'API & Integrations',icon:'i-zap'},
+  {key:'appearance',   label:'Appearance',        icon:'i-eye'},
+  {key:'system',       label:'System',            icon:'i-activity'}
+];
+
+/* ---------- dirty tracking, autosave, discard ---------- */
+function setMark(){
+  setDirty=true;
+  const el=document.getElementById('set_dirty');
+  if(el) el.textContent='Unsaved changes';
+  clearTimeout(_setSaveTimer);
+  // Auto Save: settings are preferences, so saving them 1.2s after you stop
+  // changing something is safe and expected — unlike automation records,
+  // which stay behind an explicit Save.
+  _setSaveTimer=setTimeout(()=>{ if(setDirty) saveSettings(true); }, 1200);
+}
+function setField(section, key, value){
+  if(!setDraft[section]) setDraft[section]={};
+  setDraft[section][key]=value;
+  setMark();
+  // live-preview the purely visual settings straight away
+  if(section==='appearance') applyAppearance(setDraft.appearance);
+}
+function setToggle(section, key, btn){
+  const v=!setDraft[section][key];
+  setDraft[section][key]=v;
+  if(btn) btn.classList.toggle('on', v);
+  setMark();
+  if(section==='appearance') applyAppearance(setDraft.appearance);
+  if(section==='notifications' && key==='browser' && v) requestBrowserNotifications();
+}
+function saveSettings(silent){
+  const ok=persistSettings(setDraft);
+  if(!ok){ toast('Could not save settings in this browser.','error'); return false; }
+  const before=JSON.stringify(SETTINGS);
+  SETTINGS=JSON.parse(JSON.stringify(setDraft));
+  setDirty=false;
+  const el=document.getElementById('set_dirty'); if(el) el.textContent='';
+  applyAllSettings();
+  if(before!==JSON.stringify(SETTINGS)){
+    logAudit('Settings Changed', {oldValue:'', newValue:'Settings updated'});
+  }
+  if(!silent) toast('Settings saved.','ok');
+  return true;
+}
+function setDiscard(){
+  setDraft=JSON.parse(JSON.stringify(SETTINGS));
+  setDirty=false;
+  clearTimeout(_setSaveTimer);
+  applyAppearance(SETTINGS.appearance);
+}
+function setCancel(){
+  if(setDirty && !confirm('Discard your unsaved settings changes?')) return;
+  setDiscard(); renderSettings(); toast('Changes discarded.','ok');
+}
+function setResetDefaults(){
+  if(!confirm('Reset every setting on this page back to its default value?\n\nThis cannot be undone.')) return;
+  setDraft=JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+  saveSettings(true); renderSettings();
+  toast('Settings reset to defaults.','ok');
+}
+
+/* ---------- applying settings for real ---------- */
+function applyAppearance(a){
+  a=a||SETTINGS.appearance;
+  const root=document.documentElement;
+  const mode = a.theme==='system'
+    ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    : a.theme;
+  root.setAttribute('data-theme', mode);
+  root.setAttribute('data-compact', a.compact ? '1' : '0');
+  if(a.accent){
+    root.style.setProperty('--acc', a.accent);
+    root.style.setProperty('--acc-h', shadeColor(a.accent,-18));
+  }
+}
+/* darken/lighten a #rrggbb by pct, used for the accent's hover shade */
+function shadeColor(hex, pct){
+  const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(String(hex));
+  if(!m) return hex;
+  const adj=v=>Math.max(0,Math.min(255,Math.round(parseInt(v,16)*(100+pct)/100)));
+  const p=n=>n.toString(16).padStart(2,'0');
+  return '#'+p(adj(m[1]))+p(adj(m[2]))+p(adj(m[3]));
+}
+function applyAllSettings(){
+  applyAppearance(SETTINGS.appearance);
+  applyCompanyBranding();
+  restartIdleTimer();
+}
+/* company name + logo genuinely appear in the header */
+function applyCompanyBranding(){
+  const g=SETTINGS.general;
+  const sub=document.querySelector('header .brand-txt > .sub');
+  if(sub && g.companyName){
+    sub.textContent = `${g.companyName} · IT Division · Department & user-wise AI automation tracker`;
+  }
+  const logo=document.querySelector('header .logo');
+  if(logo && g.companyLogo) logo.src=g.companyLogo;
+}
+
+/* Session Timeout — real idle logout, not a stored number that does nothing */
+let _idleTimer=null;
+function restartIdleTimer(){
+  clearTimeout(_idleTimer);
+  const mins=Number(SETTINGS.security.sessionTimeout)||0;
+  if(!mins || !currentUser) return;
+  _idleTimer=setTimeout(()=>{
+    if(!currentUser) return;
+    toast('Signed out after '+mins+' minutes of inactivity.','error');
+    logout();
+  }, mins*60000);
+}
+['mousedown','keydown','touchstart','scroll'].forEach(ev=>
+  document.addEventListener(ev, ()=>{ if(currentUser && SETTINGS.security.sessionTimeout) restartIdleTimer(); },
+    {passive:true}));
+
+/* Password policy — genuinely enforced by doSignup() and the reset flow */
+function policyRules(){ return SETTINGS.security; }
+function passwordPolicyErrors(pw){
+  const p=policyRules(), out=[];
+  if(pw.length < (Number(p.pwMinLength)||8)) out.push(`at least ${p.pwMinLength||8} characters`);
+  if(p.pwUpper   && !/[A-Z]/.test(pw))       out.push('an uppercase letter');
+  if(p.pwLower   && !/[a-z]/.test(pw))       out.push('a lowercase letter');
+  if(p.pwNumber  && !/[0-9]/.test(pw))       out.push('a number');
+  if(p.pwSpecial && !/[^A-Za-z0-9]/.test(pw))out.push('a special character');
+  return out;
+}
+
+/* Browser notifications — real Notification API, with real permission flow */
+async function requestBrowserNotifications(){
+  if(!('Notification' in window)){
+    toast('This browser does not support desktop notifications.','error');
+    setDraft.notifications.browser=false; renderSettings(); return;
+  }
+  if(Notification.permission==='granted') return;
+  const res=await Notification.requestPermission();
+  if(res!=='granted'){
+    toast('Desktop notifications were blocked by the browser.','error');
+    setDraft.notifications.browser=false; renderSettings();
+  } else {
+    toast('Desktop notifications enabled.','ok');
+  }
+}
+
+/* ---------- rendering ---------- */
+function renderSettings(){
+  const nav=document.getElementById('set_nav'), body=document.getElementById('set_body');
+  if(!nav || !body) return;
+
+  const visible=SET_SECTIONS.filter(s=>{
+    if(['users','workspaces'].includes(s.key)) return isSuperAdmin();
+    if(s.key==='departments') return can('write');
+    return true;
+  });
+  if(!visible.some(s=>s.key===setSection)) setSection='general';
+
+  nav.innerHTML=visible.map(s=>`
+    <button class="set-nav-item ${s.key===setSection?'on':''}" onclick="setGo('${s.key}')">
+      <svg class="ic ic-sm"><use href="#${s.icon}"/></svg> ${esc(s.label)}</button>`).join('');
+
+  const render=SET_RENDERERS[setSection];
+  body.innerHTML = (render?render():'<div class="empty">Section not found.</div>')
+    + settingsActionBar();
+
+  // sections that populate themselves after their shell is in the DOM
+  if(setSection==='users')  drawUserTable();
+  if(setSection==='system') checkSystemStatus();
+}
+function setGo(key){
+  setSection=key;
+  renderSettings();
+  const b=document.getElementById('set_body'); if(b) b.scrollIntoView({block:'nearest'});
+}
+function settingsActionBar(){
+  // the three sections below are live management screens, not forms
+  if(['users','workspaces','departments','system'].includes(setSection)) return '';
+  return `<div class="set-actions">
+    <button class="pri" onclick="saveSettings()"><svg class="ic ic-sm"><use href="#i-save"/></svg> Save Changes</button>
+    <button onclick="setResetDefaults()"><svg class="ic ic-sm"><use href="#i-rotate"/></svg> Reset</button>
+    <button onclick="setCancel()">Cancel</button>
+    <span class="set-dirty" id="set_dirty">${setDirty?'Unsaved changes':''}</span>
+  </div>`;
+}
+
+/* small builders so each section stays readable */
+const setCard=(title,sub,body)=>`<div class="set-card">
+  <div class="set-card-head"><div class="set-card-title">${esc(title)}</div>
+    ${sub?`<div class="set-card-sub">${esc(sub)}</div>`:''}</div>${body}</div>`;
+const setInput=(sec,key,label,opts)=>{
+  opts=opts||{};
+  const v=setDraft[sec][key]??'';
+  return `<div class="set-field"><label>${esc(label)}</label>
+    <input type="${opts.type||'text'}" value="${esc(v)}" ${opts.placeholder?`placeholder="${esc(opts.placeholder)}"`:''}
+      ${opts.readonly?'readonly':''} ${opts.min!=null?`min="${opts.min}"`:''}
+      oninput="setField('${sec}','${key}',this.value)">
+    ${opts.hint?`<div class="set-hint">${opts.hint}</div>`:''}</div>`;
+};
+const setSelect=(sec,key,label,options,hint)=>{
+  const v=setDraft[sec][key];
+  return `<div class="set-field"><label>${esc(label)}</label>
+    <select onchange="setField('${sec}','${key}',this.value)">
+      ${options.map(o=>{const val=Array.isArray(o)?o[0]:o, lab=Array.isArray(o)?o[1]:o;
+        return `<option value="${esc(val)}"${String(v)===String(val)?' selected':''}>${esc(lab)}</option>`;}).join('')}
+    </select>${hint?`<div class="set-hint">${hint}</div>`:''}</div>`;
+};
+const setSwitchRow=(sec,key,title,desc,disabled)=>`<div class="set-row">
+  <div class="set-row-txt"><div class="set-row-t">${esc(title)}</div>
+    <div class="set-row-d">${desc}</div></div>
+  <div class="set-row-act">
+    <button class="sw ${setDraft[sec] && setDraft[sec][key]?'on':''}" ${disabled?'disabled':''}
+      role="switch" aria-checked="${!!(setDraft[sec]&&setDraft[sec][key])}" aria-label="${esc(title)}"
+      onclick="setToggle('${sec}','${key}',this)"></button></div></div>`;
+const setNote=(title,desc,info)=>`<div class="set-note ${info?'info':''}">
+  <svg class="ic"><use href="#i-alert"/></svg>
+  <div><div class="set-note-t">${esc(title)}</div><div class="set-note-d">${desc}</div></div></div>`;
+const setKV=(k,v)=>`<div class="set-kv"><span class="set-kv-k">${esc(k)}</span><span class="set-kv-v">${v}</span></div>`;
+
+const TIMEZONES=['Asia/Dhaka','Asia/Kolkata','Asia/Dubai','Asia/Singapore','Europe/London',
+  'Europe/Berlin','America/New_York','America/Los_Angeles','UTC'];
+const LANGS=[['en-GB','English (UK)'],['en-US','English (US)'],['bn-BD','বাংলা (Bangla)']];
+const DATE_FORMATS=[['dd MMM yyyy','28 Jul 2026'],['dd/MM/yyyy','28/07/2026'],
+  ['MM/dd/yyyy','07/28/2026'],['yyyy-MM-dd','2026-07-28']];
+const ACCENTS=['#1175BC','#2A3C50','#059669','#7C3AED','#D97706','#E11D48','#0E9BA6'];
+
+const SET_RENDERERS = {
+
+/* ---------- GENERAL ---------- */
+general: ()=> setCard('General','Company identity and regional defaults for this dashboard.',`
+  <div class="set-field" style="margin-bottom:20px"><label>Company Logo</label>
+    <div class="set-avatar">
+      ${setDraft.general.companyLogo
+        ? `<img class="set-avatar-img" src="${esc(setDraft.general.companyLogo)}" alt="Company logo">`
+        : `<div class="set-avatar-ph">${esc((setDraft.general.companyName||'D').trim().charAt(0).toUpperCase())}</div>`}
+      <div>
+        <button onclick="document.getElementById('set_logo').click()">
+          <svg class="ic ic-sm"><use href="#i-upload"/></svg> Upload logo</button>
+        ${setDraft.general.companyLogo?`<button onclick="setField('general','companyLogo','');renderSettings()">Remove</button>`:''}
+        <input type="file" id="set_logo" accept="image/*" style="display:none" onchange="setUploadImage(event,'general','companyLogo')">
+        <div class="set-hint">PNG or SVG, up to 400&nbsp;KB. Replaces the logo in the header.</div>
+      </div>
+    </div></div>
+  <div class="set-grid">
+    ${setInput('general','companyName','Company Name',{placeholder:'DBL Group'})}
+    ${setInput('general','companyEmail','Company Email',{type:'email',placeholder:'it.ai@dbl-group.com'})}
+    ${setInput('general','companyPhone','Company Phone',{placeholder:'+880 …'})}
+    ${setInput('general','website','Website',{placeholder:'https://dbl-group.com'})}
+    ${setSelect('general','timezone','Time Zone',TIMEZONES,'Used when stamping created and updated times.')}
+    ${setSelect('general','language','Language',LANGS,'Applies to date and number formatting.')}
+    ${setSelect('general','currency','Default Currency',Object.keys(CUR_SYM),'Pre-selected for new automations.')}
+    ${setSelect('general','dateFormat','Date Format',DATE_FORMATS,'How start dates are displayed.')}
+  </div>`),
+
+/* ---------- COMPANY ---------- */
+company: ()=> setCard('Company Details','Registration and organisational information.',`
+  <div class="set-grid">
+    ${setInput('company','legalName','Registered Legal Name',{placeholder:'DBL Group Ltd.'})}
+    ${setInput('company','registrationNo','Registration / BIN No.',{placeholder:'Optional'})}
+    ${setInput('company','industry','Industry',{placeholder:'e.g. Textile, Pharmaceuticals'})}
+    ${setSelect('company','size','Organisation Size',
+      ['1–50','51–200','201–1000','1001–5000','5000+'])}
+    ${setSelect('company','fiscalStart','Fiscal Year Starts',
+      ['January','April','July','October'])}
+  </div>
+  <div class="set-field" style="margin-top:16px"><label>Registered Address</label>
+    <textarea placeholder="Street, city, country" oninput="setField('company','address',this.value)">${esc(setDraft.company.address)}</textarea>
+  </div>`),
+
+/* ---------- PROFILE ---------- */
+profile: ()=>{
+  if(!currentUser) return setCard('Profile','Your account details.',
+    `<div class="empty">Sign in to view and edit your profile.</div>
+     <button class="pri" onclick="login()" style="margin-top:14px">Sign in</button>`);
+  const acct=allAccounts().find(a=>a.user===currentUser.user)||{};
+  const builtin=USERS.some(u=>u.user===currentUser.user);
+  return setCard('Profile','Your personal account details.',`
+    ${builtin?setNote('This is a built-in account',
+      'Its name, username and password are fixed in the application source, so they cannot be changed from this screen. Ask your administrator, or use a self-service account.',true):''}
+    <div class="set-avatar" style="margin-bottom:20px">
+      ${acct.avatar?`<img class="set-avatar-img" src="${esc(acct.avatar)}" alt="">`
+        :`<div class="set-avatar-ph">${esc((currentUser.name||'?').trim().charAt(0).toUpperCase())}</div>`}
+      <div><button ${builtin?'disabled':''} onclick="document.getElementById('set_avatar').click()">
+        <svg class="ic ic-sm"><use href="#i-upload"/></svg> Change picture</button>
+        <input type="file" id="set_avatar" accept="image/*" style="display:none" onchange="setUploadAvatar(event)">
+        <div class="set-hint">Shown beside your name. Up to 200&nbsp;KB.</div></div>
+    </div>
+    <div class="set-grid">
+      <div class="set-field"><label>Full Name</label>
+        <input id="pf_name" value="${esc(acct.name||currentUser.name||'')}" ${builtin?'readonly':''}></div>
+      <div class="set-field"><label>Email</label>
+        <input id="pf_email" type="email" value="${esc(acct.email||'')}" ${builtin?'readonly':''}></div>
+      <div class="set-field"><label>Username</label>
+        <input value="${esc(currentUser.user)}" readonly>
+        <div class="set-hint">Usernames cannot be changed once created.</div></div>
+      <div class="set-field"><label>Department</label>
+        <select id="pf_dept" ${builtin?'disabled':''}>
+          <option value="">—</option>
+          ${Object.keys(roster).sort().map(d=>`<option${acct.dept===d?' selected':''}>${esc(d)}</option>`).join('')}
+        </select></div>
+      <div class="set-field"><label>Role</label>
+        <input value="${esc(isSuperAdmin()?'Super Admin':(ROLES[role]||ROLES.viewer).label)}" readonly>
+        <div class="set-hint">Only the Super Admin can change roles.</div></div>
+    </div>
+    ${builtin?'':`<div style="margin-top:16px">
+      <button class="pri" onclick="saveProfile()"><svg class="ic ic-sm"><use href="#i-save"/></svg> Save Profile</button></div>`}
+    <div class="set-card-head" style="margin:26px 0 18px"><div class="set-card-title">Change Password</div>
+      <div class="set-card-sub">You will stay signed in on this device.</div></div>
+    ${builtin?`<div class="empty" style="text-align:left;padding:14px 16px">
+      A built-in account's password is set in the source code and cannot be changed here.</div>`:`
+    <div class="set-grid">
+      <div class="set-field"><label>Current Password</label><input id="pf_p0" type="password" autocomplete="current-password"></div>
+      <div class="set-field"><label>New Password</label><input id="pf_p1" type="password" autocomplete="new-password"></div>
+      <div class="set-field"><label>Confirm New Password</label><input id="pf_p2" type="password" autocomplete="new-password"></div>
+    </div>
+    <div id="pf_msg" style="font-size:12.5px;min-height:18px;margin-top:10px"></div>
+    <button class="pri" onclick="changeOwnPassword()"><svg class="ic ic-sm"><use href="#i-lock"/></svg> Update Password</button>`}`);
+},
+
+/* ---------- SECURITY ---------- */
+security: ()=>{
+  const logins=loadAuditLog().filter(e=>e.action==='Login').sort((a,b)=>b.ts-a.ts).slice(0,10);
+  const pres=loadPresence();
+  const active=Object.keys(pres).map(k=>({k,...pres[k]}))
+    .map(e=>({...e,computed:computeStatus(e)}))
+    .filter(e=>e.computed!=='offline');
+  const devices=loadTrustedDevices();
+  return setCard('Two-Factor Authentication','An extra step when signing in.',`
+    ${setNote('Not available on this deployment',
+      'Sign-in is verified in the browser, so a second factor could be skipped with developer tools — it would look like security without being any. Enabling 2FA for real means moving authentication server-side.')}
+    <div class="set-row"><div class="set-row-txt"><div class="set-row-t">Require 2FA at sign-in</div>
+      <div class="set-row-d">Unavailable until authentication moves to the backend.</div></div>
+      <div class="set-row-act"><button class="sw" disabled aria-label="Two-factor authentication"></button></div></div>`)
+  + setCard('Session','How long a signed-in session stays open.',`
+    <div class="set-grid">
+      ${setSelect('security','sessionTimeout','Session Timeout',
+        [[0,'Never sign out automatically'],[15,'After 15 minutes idle'],[30,'After 30 minutes idle'],
+         [60,'After 1 hour idle'],[240,'After 4 hours idle']],
+        'Signs you out after a period with no mouse, key or scroll activity.')}
+    </div>
+    ${setSwitchRow('security','rememberMe','Remember Me',
+      'Keep this browser signed in after the tab is closed. Without it, the session ends when the tab does.')}`)
+  + setCard('Password Policy','Applied to sign-ups and every password reset.',`
+    <div class="set-grid">
+      ${setInput('security','pwMinLength','Minimum Length',{type:'number',min:6})}
+    </div>
+    ${setSwitchRow('security','pwUpper','Require an uppercase letter','A–Z must appear at least once.')}
+    ${setSwitchRow('security','pwLower','Require a lowercase letter','a–z must appear at least once.')}
+    ${setSwitchRow('security','pwNumber','Require a number','0–9 must appear at least once.')}
+    ${setSwitchRow('security','pwSpecial','Require a special character','Anything outside letters and digits.')}`)
+  + setCard(`Active Sessions (${active.length})`,'Devices currently signed in or recently active.',
+    active.length?active.map(e=>`<div class="set-row">
+      <div class="set-row-txt"><div class="set-row-t">${esc(e.viewer||e.k)}</div>
+        <div class="set-row-d">${esc(e.location||'Unknown location')} · ${relTime(e.lastActivity)}</div></div>
+      <div class="set-row-act">${presenceBadgeHTML(e.k,{showLastSeen:false})}</div></div>`).join('')
+      :'<div class="empty">No active sessions detected.</div>')
+  + setCard(`Login History (${logins.length})`,'The ten most recent sign-in attempts on this device.',
+    logins.length?`<div class="audit-table-wrap"><table class="audit-table"><thead><tr>
+        <th>When</th><th>User</th><th>Browser</th><th>Device</th><th>IP</th><th>Result</th></tr></thead><tbody>
+      ${logins.map(e=>`<tr><td style="white-space:nowrap">${fmtStamp(new Date(e.ts).toISOString())}</td>
+        <td><b>${esc(e.user)}</b></td><td style="color:var(--mut)">${esc(e.browser)}</td>
+        <td style="color:var(--mut)">${esc(e.device)}</td><td style="color:var(--mut)">${esc(e.ip)}</td>
+        <td><span class="pill ${e.status==='Success'?'s-Successful':'p-Critical'}">${esc(e.status)}</span></td>
+      </tr>`).join('')}</tbody></table></div>`
+      :'<div class="empty">No sign-ins recorded on this device yet.</div>')
+  + setCard(`Trusted Devices (${devices.length})`,'Browsers you have marked as trusted.',`
+    ${devices.length?devices.map(d=>`<div class="set-row">
+      <div class="set-row-txt"><div class="set-row-t">${esc(d.label)}${d.id===deviceId()?' <span style="color:var(--ok);font-size:11.5px">· this device</span>':''}</div>
+        <div class="set-row-d">Trusted ${relTime(d.since)}</div></div>
+      <div class="set-row-act"><button class="lnk dgr" onclick="untrustDevice('${esc(d.id)}')">Remove</button></div></div>`).join('')
+      :'<div class="empty">No trusted devices yet.</div>'}
+    ${devices.some(d=>d.id===deviceId())?'':`<button style="margin-top:14px" onclick="trustThisDevice()">
+      <svg class="ic ic-sm"><use href="#i-check"/></svg> Trust this device</button>`}`);
+},
+
+/* ---------- GOOGLE WORKSPACE ---------- */
+google: ()=> setCard('Google Workspace','Single sign-on with your organisation’s Google accounts.',`
+  ${setNote('Not connected',
+    'Connecting needs an OAuth client ID and a server-side token exchange, neither of which exists on this deployment yet. The fields below are stored so they are ready when it does.')}
+  <div class="set-stats" style="margin-bottom:18px">
+    <div class="set-stat"><span class="set-stat-ic"><svg class="ic ic-sm"><use href="#i-alert"/></svg></span>
+      <div><b>Not Connected</b><span>Workspace status</span></div></div>
+    <div class="set-stat"><span class="set-stat-ic"><svg class="ic ic-sm"><use href="#i-user"/></svg></span>
+      <div><b>—</b><span>Connected account</span></div></div>
+  </div>
+  <div class="set-grid">
+    ${setInput('google','clientId','OAuth Client ID',{placeholder:'…apps.googleusercontent.com'})}
+    ${setInput('google','orgDomain','Organisation Domain',
+      {placeholder:'dbl-group.com',hint:'This one is live: sign-ups are restricted to email addresses on this domain.'})}
+  </div>
+  <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
+    <button class="pri" disabled title="Requires an OAuth client">
+      <svg class="ic ic-sm"><use href="#i-cloud"/></svg> Connect Workspace</button>
+    <button disabled>Disconnect</button>
+  </div>`)
+  + setCard('Google Sheet Sync','This part is live — it is how the dashboard stores its data.',`
+    ${setKV('Last sync', lastSync?fmtStamp(lastSync.toISOString()):'Not synced yet')}
+    ${setKV('Sheet endpoint', `<span style="font-family:monospace;font-size:11.5px">${esc((SETTINGS.api.sheetUrl||API).slice(0,58))}…</span>`)}
+    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="pri" onclick="cloudLoad(true)"><svg class="ic ic-sm"><use href="#i-refresh"/></svg> Sync Now</button>
+      <button class="adm" onclick="cloudSave()"><svg class="ic ic-sm"><use href="#i-cloud"/></svg> Save to Sheet</button>
+    </div>`),
+
+/* ---------- NOTIFICATIONS ---------- */
+notifications: ()=> setCard('Delivery','Where notifications are shown.',`
+  ${setSwitchRow('notifications','browser','Browser Notifications',
+    'Show a desktop notification even when this tab is in the background. Your browser will ask permission.')}
+  <div class="set-row"><div class="set-row-txt"><div class="set-row-t">Email Notifications</div>
+    <div class="set-row-d">Requires the mail endpoint in Code.gs — the browser cannot send email on its own.</div></div>
+    <div class="set-row-act"><button class="sw" disabled aria-label="Email notifications"></button></div></div>`)
+  + setCard('Categories','Turn off any category you do not want to be told about. In-app history still records everything.',`
+    ${setSwitchRow('notifications','system','System Alerts','Settings changes, exports and general activity.')}
+    ${setSwitchRow('notifications','automation','Automation Alerts','Automations created, updated or archived.')}
+    ${setSwitchRow('notifications','security','Security Alerts','Sign-ins, failed sign-ins and password resets.')}
+    ${setSwitchRow('notifications','user','User Alerts','New registrations and account changes.')}
+    ${setSwitchRow('notifications','backup','Backup Notifications','Backup and restore results.')}
+    ${setSwitchRow('notifications','sync','Google Sheet Sync','Sync successes and failures.')}
+    ${setSwitchRow('notifications','audit','Audit Log Notifications','Audit log exports and events.')}
+    ${setSwitchRow('notifications','workspace','Workspace Alerts','Departments and workspace changes.')}`),
+
+/* ---------- DEPARTMENTS ---------- */
+departments: ()=> setCard('Departments',`${Object.keys(roster).length} departments · ${allUsers().length} people.`,`
+  <div class="addrow" style="max-width:440px;margin-bottom:18px">
+    <input id="set_newdept" placeholder="New department name"
+      onkeydown="if(event.key==='Enter')setAddDept()">
+    <button class="pri" onclick="setAddDept()"><svg class="ic ic-sm"><use href="#i-plus"/></svg> Add</button>
+  </div>
+  ${Object.keys(roster).sort().map(d=>`<div class="set-row">
+    <div class="set-row-txt"><div class="set-row-t">${esc(d)}</div>
+      <div class="set-row-d">${(roster[d]||[]).length} member${(roster[d]||[]).length===1?'':'s'} ·
+        ${data.filter(r=>r.dept===d&&r.task&&!r.archived).length} automations</div></div>
+    <div class="set-row-act">
+      <button class="lnk" onclick="setRenameDept('${jsq(d)}')">Rename</button>
+      <button class="lnk dgr" onclick="setDeleteDept('${jsq(d)}')">Delete</button></div></div>`).join('')}`),
+
+/* ---------- USERS ---------- */
+users: ()=> setCard('User Management','Every account, built-in and self-service.',
+  `<div class="frow" style="margin-bottom:14px">
+     <div><label>Search</label><input id="mu_q" placeholder="Name, username, or email" oninput="drawUserTable()"></div>
+     <div><label>Role</label><select id="mu_role" onchange="drawUserTable()">
+       <option value="">All Roles</option><option value="admin">Admin</option>
+       <option value="editor">Editor</option><option value="viewer">Viewer</option></select></div>
+     <div><label>Status</label><select id="mu_status" onchange="drawUserTable()">
+       <option value="">All</option><option value="active">Active</option><option value="disabled">Disabled</option></select></div>
+   </div>
+   <div id="mu_table"></div>`),
+
+/* ---------- WORKSPACES ---------- */
+workspaces: ()=>{
+  const counts={};
+  data.filter(r=>r.task && !r.archived).forEach(r=>{
+    const k=(r.ownerId!=null&&r.ownerId!=='')?String(r.ownerId):'__legacy__';
+    counts[k]=(counts[k]||0)+1;
+  });
+  return setCard('Workspaces','Each user has a private workspace. As Super Admin you can open any of them.',`
+    <div class="ws-list">
+      <div class="ws-row ${!workspaceView?'ws-active':''}" onclick="setWorkspace(null)">
+        <div><b>All workspaces</b><span class="ws-sub">Everything across every user</span></div>
+        <span class="ws-count">${data.filter(r=>r.task&&!r.archived).length}</span></div>
+      ${allAccounts().map(a=>`<div class="ws-row ${String(workspaceView)===String(a.id)?'ws-active':''}"
+        onclick="setWorkspace('${String(a.id)}')">
+        <div><b>${esc(a.name)}</b><span class="ws-sub">@${esc(a.user)} · ${ROLES[a.role]?.label||a.role}</span></div>
+        <span class="ws-count">${counts[String(a.id)]||0}</span></div>`).join('')}
+      ${counts['__legacy__']?`<div class="ws-row ${String(workspaceView)==='__legacy__'?'ws-active':''}"
+        onclick="setWorkspace('__legacy__')">
+        <div><b>Legacy / unassigned</b><span class="ws-sub">Rows created before workspaces existed</span></div>
+        <span class="ws-count">${counts['__legacy__']}</span></div>`:''}
+    </div>`);
+},
+
+/* ---------- BACKUP & RESTORE ---------- */
+backup: ()=> setCard('Backup','Export everything, or push the current state to the Sheet.',`
+  ${setKV('Last backup', SETTINGS.backup.lastBackup?fmtStamp(SETTINGS.backup.lastBackup):'Never')}
+  ${setKV('Records', `${data.filter(r=>r.task).length} automations · ${Object.keys(roster).length} departments`)}
+  <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
+    <button class="pri" onclick="exportJSON();setField('backup','lastBackup',new Date().toISOString());saveSettings(true);renderSettings()">
+      <svg class="ic ic-sm"><use href="#i-download"/></svg> Create &amp; Download Backup</button>
+    <button onclick="document.getElementById('imp').click()">
+      <svg class="ic ic-sm"><use href="#i-upload"/></svg> Restore from File</button>
+    <button onclick="exportCSV()"><svg class="ic ic-sm"><use href="#i-sheet"/></svg> Export CSV</button>
+  </div>`)
+  + setCard('Automatic Backup','Saves the current data to your Google Sheet on a schedule while this tab is open.',`
+    ${setNote('How this works',
+      'A browser cannot write files to disk on its own, so automatic backup pushes to the Google Sheet rather than downloading a file. Downloads stay manual, above. It only runs while this tab is open.',true)}
+    ${setSwitchRow('backup','autoBackup','Auto Backup','Push to the Google Sheet automatically.')}
+    <div class="set-grid" style="margin-top:14px">
+      ${setSelect('backup','schedule','Backup Schedule',
+        [['hourly','Every hour'],['daily','Every 6 hours'],['weekly','Once a day']],
+        'Timer restarts whenever the page is reloaded.')}
+    </div>`),
+
+/* ---------- API & INTEGRATIONS ---------- */
+api: ()=> setCard('Google Sheets','The live data store behind this dashboard.',`
+  <div class="set-field"><label>Apps Script Web App URL</label>
+    <input value="${esc(setDraft.api.sheetUrl||API)}" placeholder="https://script.google.com/macros/s/…/exec"
+      oninput="setField('api','sheetUrl',this.value)">
+    <div class="set-hint">Overrides the URL built into the page. Changing it takes effect after you save and reload.</div></div>
+  <div style="margin-top:14px">${setKV('Connection', lastSync
+    ? '<span style="color:var(--ok)">Connected</span>'
+    : '<span style="color:var(--warn)">Not yet synced</span>')}</div>`)
+  + setCard('Chat Integrations','Post automation events into a team channel.',`
+    ${setNote('Needs a relay in Code.gs',
+      'Slack and Microsoft Teams webhooks reject requests sent straight from a browser (CORS), so the message has to be forwarded by the Apps Script backend. Save the URLs here and they are ready for that step.')}
+    <div class="set-grid-1 set-grid">
+      ${setInput('api','slackWebhook','Slack Incoming Webhook',{placeholder:'https://hooks.slack.com/services/…'})}
+      ${setInput('api','teamsWebhook','Microsoft Teams Webhook',{placeholder:'https://outlook.office.com/webhook/…'})}
+      ${setInput('api','customWebhook','Custom Webhook',{placeholder:'https://your-endpoint.example.com/hook'})}
+    </div>`)
+  + setCard('API Keys','Programmatic access to this data.',`
+    ${setNote('No key store available',
+      'Issuing an API key only means something if a server can check it. This deployment’s backend accepts anonymous requests by design, so a key generated here would secure nothing. See the security note in README.md.')}
+    <button disabled>Generate API Key</button>`),
+
+/* ---------- APPEARANCE ---------- */
+appearance: ()=> setCard('Theme','Applies immediately, and is remembered on this device.',`
+  <div class="set-themes">
+    ${[['light','Light','#F1F5F9','#FFFFFF'],['dark','Dark','#0B1220','#141D2E'],
+       ['system','System','linear-gradient(135deg,#F1F5F9 50%,#0B1220 50%)','']]
+      .map(([k,label,bg,panel])=>`
+      <button class="set-theme ${setDraft.appearance.theme===k?'on':''}" onclick="setField('appearance','theme','${k}');renderSettings()">
+        <div class="set-theme-sw" style="background:${bg}">${panel?`<div style="height:16px;margin:8px;border-radius:4px;background:${panel}"></div>`:''}</div>
+        <div class="set-theme-name">${label}</div></button>`).join('')}
+  </div>
+  <div class="set-hint" style="margin-top:12px">System follows your operating system's light or dark preference.</div>`)
+  + setCard('Accent Colour','Used for links, highlights and primary buttons.',`
+    <div class="set-accents">
+      ${ACCENTS.map(c=>`<button class="set-accent ${setDraft.appearance.accent===c?'on':''}"
+        style="background:${c}" aria-label="Accent ${c}" title="${c}"
+        onclick="setField('appearance','accent','${c}');renderSettings()"></button>`).join('')}
+    </div>`)
+  + setCard('Density','Fit more on screen.',
+    setSwitchRow('appearance','compact','Compact Mode','Reduces padding across tables, cards and the KPI strip.')),
+
+/* ---------- SYSTEM ---------- */
+system: ()=>{
+  const bytes=storageUsed();
+  return setCard('System Information','Live status of this deployment.',`
+    <div class="set-stats" style="margin-bottom:20px">
+      <div class="set-stat"><span class="set-stat-ic"><svg class="ic ic-sm"><use href="#i-activity"/></svg></span>
+        <div><b>v${APP_VERSION}</b><span>Application version</span></div></div>
+      <div class="set-stat"><span class="set-stat-ic" id="sys_db_ic"><svg class="ic ic-sm"><use href="#i-cloud"/></svg></span>
+        <div><b id="sys_db">Checking…</b><span>Database (Google Sheet)</span></div></div>
+      <div class="set-stat"><span class="set-stat-ic" id="sys_srv_ic"><svg class="ic ic-sm"><use href="#i-zap"/></svg></span>
+        <div><b id="sys_srv">Checking…</b><span>Backend server</span></div></div>
+      <div class="set-stat"><span class="set-stat-ic"><svg class="ic ic-sm"><use href="#i-save"/></svg></span>
+        <div><b>${SETTINGS.backup.lastBackup?fmtDateShort(SETTINGS.backup.lastBackup):'Never'}</b><span>Last backup</span></div></div>
+    </div>
+    ${setKV('Storage used', `${(bytes/1024).toFixed(1)} KB of roughly 5 MB browser quota`)}
+    ${setKV('Automations stored', String(data.filter(r=>r.task).length))}
+    ${setKV('Notifications stored', String(loadNotifs().length))}
+    ${setKV('Audit entries stored', String(loadAuditLog().length))}
+    ${setKV('Access log entries', String(loadAccessLog().length))}
+    ${setKV('Browser', `${parseUA().browser} on ${parseUA().device}`)}
+    ${setKV('Time zone', SETTINGS.general.timezone)}
+    <div style="margin-top:18px"><button onclick="checkSystemStatus()">
+      <svg class="ic ic-sm"><use href="#i-refresh"/></svg> Re-check status</button></div>`);
+}
+};
+
+/* ---------- section helpers ---------- */
+function storageUsed(){
+  let n=0;
+  try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i);
+    n += (k.length + (localStorage.getItem(k)||'').length) * 2; } }catch(e){}
+  return n;
+}
+async function checkSystemStatus(){
+  const set=(id,txt,color)=>{ const el=document.getElementById(id);
+    if(el){ el.textContent=txt; el.style.color=color||''; } };
+  set('sys_db','Checking…'); set('sys_srv','Checking…');
+  const t0=performance.now();
+  try{
+    const res=await fetch((SETTINGS.api.sheetUrl||API) + '?t=' + Date.now());
+    const ms=Math.round(performance.now()-t0);
+    const j=await res.json();
+    if(j && !j.error){
+      set('sys_srv','Online · '+ms+'ms','var(--ok)');
+      set('sys_db', Array.isArray(j.data) ? `Connected · ${j.data.length} rows` : 'Connected','var(--ok)');
+    } else {
+      set('sys_srv','Online · '+ms+'ms','var(--ok)');
+      set('sys_db','Error: '+esc(j.error||'unknown'),'var(--danger)');
+    }
+  }catch(e){
+    set('sys_srv','Unreachable','var(--danger)');
+    set('sys_db','Unreachable','var(--danger)');
+  }
+}
+
+function setUploadImage(e,sec,key){
+  const f=e.target.files[0]; if(!f) return;
+  if(f.size>400*1024){ toast('That image is larger than 400 KB.','error'); e.target.value=''; return; }
+  const rd=new FileReader();
+  rd.onload=ev=>{ setField(sec,key,ev.target.result); saveSettings(true); renderSettings(); toast('Logo updated.','ok'); };
+  rd.readAsDataURL(f); e.target.value='';
+}
+function setUploadAvatar(e){
+  const f=e.target.files[0]; if(!f) return;
+  if(f.size>200*1024){ toast('That image is larger than 200 KB.','error'); e.target.value=''; return; }
+  const rd=new FileReader();
+  rd.onload=ev=>{
+    const custom=loadCustomUsers(); const u=custom.find(x=>x.user===currentUser.user);
+    if(u){ u.avatar=ev.target.result; saveCustomUsers(custom); renderSettings(); toast('Profile picture updated.','ok'); }
+  };
+  rd.readAsDataURL(f); e.target.value='';
+}
+function saveProfile(){
+  const custom=loadCustomUsers(); const u=custom.find(x=>x.user===currentUser.user);
+  if(!u) return;
+  const name=document.getElementById('pf_name').value.trim();
+  const email=document.getElementById('pf_email').value.trim().toLowerCase();
+  const dept=document.getElementById('pf_dept').value;
+  if(!name){ toast('Full name cannot be empty.','error'); return; }
+  if(email && !EMAIL_RE.test(email)){ toast('Enter a valid email address.','error'); return; }
+  const old=`${u.name} · ${u.email||'—'} · ${u.dept||'—'}`;
+  u.name=name; u.email=email; u.dept=dept;
+  saveCustomUsers(custom);
+  currentUser.name=name;
+  try{ sessionStorage.setItem('dbl_session', JSON.stringify(currentUser)); }catch(e){}
+  pushUserUpdateToSheet(u.user,{name,email,dept});
+  logAudit('User Updated',{user:name,email,dept,oldValue:old,newValue:`${name} · ${email||'—'} · ${dept||'—'}`});
+  applyRole(); renderSettings();
+  toast('Profile saved.','ok');
+}
+async function changeOwnPassword(){
+  const box=document.getElementById('pf_msg');
+  const err=m=>{ box.innerHTML=`<span style="color:var(--danger)">${esc(m)}</span>`; };
+  const p0=document.getElementById('pf_p0').value;
+  const p1=document.getElementById('pf_p1').value;
+  const p2=document.getElementById('pf_p2').value;
+  const custom=loadCustomUsers(); const u=custom.find(x=>x.user===currentUser.user);
+  if(!u) return err('This account cannot be changed here.');
+  if(!p0||!p1||!p2) return err('Fill in all three password fields.');
+  if(await hashPw(p0) !== u.pw) return err('Your current password is not correct.');
+  const problems=passwordPolicyErrors(p1);
+  if(problems.length) return err('The new password needs '+problems.join(', ')+'.');
+  if(p1!==p2) return err('The new passwords do not match.');
+  u.pw=await hashPw(p1); saveCustomUsers(custom);
+  pushUserUpdateToSheet(u.user,{pw:u.pw});
+  logAudit('Password Reset',{user:u.name,email:u.email||'',oldValue:'••••••••',newValue:'••••••••'});
+  box.innerHTML='<span style="color:var(--ok)">Password updated.</span>';
+  ['pf_p0','pf_p1','pf_p2'].forEach(id=>{ document.getElementById(id).value=''; });
+  toast('Password updated.','ok');
+}
+function setAddDept(){
+  if(!can('write')) return denied();
+  const el=document.getElementById('set_newdept'); const d=(el.value||'').trim();
+  if(!d) return;
+  if(roster[d]){ toast(`“${d}” already exists.`,'error'); return; }
+  roster[d]=[]; el.value='';
+  notify('workspace','Department Added',`“${d}” was added to the roster.`);
+  markDirty(); render(); renderSettings();
+}
+function setRenameDept(d){
+  if(!can('write')) return denied();
+  const n=prompt(`Rename “${d}” to:`, d);
+  if(n==null) return;
+  const name=n.trim();
+  if(!name || name===d) return;
+  if(roster[name]){ toast(`“${name}” already exists.`,'error'); return; }
+  roster[name]=roster[d]; delete roster[d];
+  data.forEach(r=>{ if(r.dept===d) r.dept=name; });   // keep automations attached
+  logAudit('Department Changed',{oldValue:d,newValue:name});
+  markDirty(); render(); renderSettings();
+  toast(`Renamed to “${name}”.`,'ok');
+}
+function setDeleteDept(d){
+  if(!can('write')) return denied();
+  const used=data.filter(r=>r.dept===d && r.task && !r.archived).length;
+  if(used){ toast(`“${d}” still has ${used} automation${used===1?'':'s'}. Move them first.`,'error'); return; }
+  if(!confirm(`Delete the department “${d}”?\n\nIts ${(roster[d]||[]).length} roster entries will be removed.`)) return;
+  delete roster[d];
+  logAudit('Department Changed',{oldValue:d,newValue:'Deleted'});
+  markDirty(); render(); renderSettings();
+  toast(`“${d}” deleted.`,'ok');
+}
+
+/* trusted devices — a real local registry keyed by a stable per-browser id */
+function deviceId(){
+  try{
+    let id=localStorage.getItem('dbl_device_id');
+    if(!id){ id='d_'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+      localStorage.setItem('dbl_device_id',id); }
+    return id;
+  }catch(e){ return 'd_unknown'; }
+}
+function loadTrustedDevices(){ try{ return JSON.parse(localStorage.getItem('dbl_trusted')||'[]'); }catch(e){ return []; } }
+function saveTrustedDevices(l){ try{ localStorage.setItem('dbl_trusted',JSON.stringify(l)); }catch(e){} }
+function trustThisDevice(){
+  const ua=parseUA(); const l=loadTrustedDevices();
+  if(l.some(d=>d.id===deviceId())) return;
+  l.push({id:deviceId(), label:`${ua.browser} on ${ua.device}`, since:new Date().toISOString()});
+  saveTrustedDevices(l); renderSettings(); toast('This device is now trusted.','ok');
+}
+function untrustDevice(id){
+  if(!confirm('Remove this trusted device?')) return;
+  saveTrustedDevices(loadTrustedDevices().filter(d=>d.id!==id));
+  renderSettings(); toast('Device removed.','ok');
+}
+
+/* auto backup timer — restarted whenever the setting changes or page loads */
+let _autoBackupTimer=null;
+function restartAutoBackup(){
+  clearInterval(_autoBackupTimer);
+  if(!SETTINGS.backup.autoBackup) return;
+  const every={hourly:3600e3, daily:6*3600e3, weekly:24*3600e3}[SETTINGS.backup.schedule]||6*3600e3;
+  _autoBackupTimer=setInterval(()=>{
+    if(can('write') && !document.hidden) cloudSave(true);
+  }, every);
+}
+
+/* leaving the page with unsaved settings */
+window.addEventListener('beforeunload', e=>{
+  if(setDirty){ e.preventDefault(); e.returnValue=''; }
+});
+
 /* ================= NOTIFICATION CENTER =================
    Notifications are raised by real events in this app and stored locally
    (localStorage, newest first, capped at 300 — same approach as the Audit
@@ -4728,6 +5700,10 @@ function unreadCount(){ return loadNotifs().filter(n=>!n.read).length; }
  */
 function notify(cat, title, desc, opts){
   opts = opts||{};
+  // Settings → Notifications can switch a whole category off. History still
+  // records it; only the toast and desktop popup are suppressed.
+  const catOn = !(typeof SETTINGS!=='undefined' && SETTINGS.notifications
+                  && SETTINGS.notifications[cat]===false);
   const n = {
     id:'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
     ts:Date.now(),
@@ -4741,7 +5717,12 @@ function notify(cat, title, desc, opts){
   paintBell(true);                                            // badge count + pop animation
   if(document.getElementById('nc_panel')) renderNotifPanel();  // live-refresh if open
   if(document.getElementById('nl_table')) renderNotifPage();
-  if(!opts.silent && typeof toast==='function') toast(title, n.level==='error'?'error':'ok');
+  if(catOn && !opts.silent && typeof toast==='function') toast(title, n.level==='error'?'error':'ok');
+  // desktop notification, if the user turned it on and the browser allowed it
+  if(catOn && !opts.silent && typeof SETTINGS!=='undefined' && SETTINGS.notifications.browser
+     && 'Notification' in window && Notification.permission==='granted' && document.hidden){
+    try{ new Notification(title, {body:desc||'', tag:n.id}); }catch(e){}
+  }
   return n;
 }
 
@@ -5064,7 +6045,9 @@ document.addEventListener('keydown', e=>{
 });
 
 /* ================= GOOGLE SHEET SYNC ================= */
-const API = "https://script.google.com/macros/s/AKfycbweQTNzZSqVhxcRgdMfGq-CV7fVHGz4Dp2kMuaZvHEyGFtYkU6sdPyyO-yNCl246zis/exec";
+/* `let`, not `const`: Settings → API & Integrations can point this at a
+   different Apps Script deployment without editing the source. */
+let API = "https://script.google.com/macros/s/AKfycbweQTNzZSqVhxcRgdMfGq-CV7fVHGz4Dp2kMuaZvHEyGFtYkU6sdPyyO-yNCl246zis/exec";
 let dirty = false, lastSync = null;
 
 function setSync(msg, color){
@@ -5191,6 +6174,18 @@ asvWireForm();
 asvRestoreDraft();
 checkResetTokenInUrl();   // if this page was opened from an emailed reset link
 initNotifications();      // builds the dropdown panel and paints the bell badge
+
+/* ---- settings: apply before the first paint so nothing flashes ---- */
+if(SETTINGS.api.sheetUrl) API = SETTINGS.api.sheetUrl;      // custom backend, if set
+applyAllSettings();                                          // theme, accent, compact, branding
+restartAutoBackup();
+if(f_cur && SETTINGS.general.currency) f_cur.value = SETTINGS.general.currency;
+/* follow the OS when the theme is set to System */
+if(window.matchMedia){
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{
+    if(SETTINGS.appearance.theme==='system') applyAppearance(SETTINGS.appearance);
+  });
+}
 showSkeletons();                 // show shimmer placeholders immediately
 cloudLoad().finally(()=>{ render(); });   // real content replaces skeletons when the load settles
 refreshUsersFromSheet();   // load cross-device accounts into the cache on startup

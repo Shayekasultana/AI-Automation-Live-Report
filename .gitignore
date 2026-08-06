@@ -1,0 +1,27 @@
+# dependencies
+node_modules/
+
+# clasp (Apps Script CLI) — .clasp.json holds your private script id
+.clasp.json
+.clasprc.json
+
+# local backups and downloaded dashboard revisions
+*.bak
+DBL_AI_Automation_Dashboard*.html
+!archive/dashboard-v81-original.html
+
+# exported data
+*.csv
+*.xls
+dbl_ai_automation_data.json
+
+# editor / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# logs
+*.log
+npm-debug.log*

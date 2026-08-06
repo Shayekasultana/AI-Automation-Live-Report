@@ -814,6 +814,43 @@ body.admin .dt-v.ed:hover{background:var(--acc2);box-shadow:inset 0 0 0 1px var(
 .lnk[disabled]:hover{background:var(--panel);border-color:var(--line);transform:none}
 
 /* ============================================================
+   GOOGLE WORKSPACE SIGN-IN
+   Added above the existing email form. Nothing in the sign-in or
+   sign-up card is restyled — these are new elements only, built
+   from the same tokens, radii and spacing as everything else.
+   ============================================================ */
+.gsi-btn{width:100%;justify-content:center;gap:10px;height:44px;border-radius:10px;
+  background:var(--panel);border:1px solid var(--line3);color:var(--txt2);
+  font-size:13.5px;font-weight:600;box-shadow:var(--sh-xs)}
+.gsi-btn:hover{background:var(--panel2);border-color:var(--mut2);color:var(--txt);
+  box-shadow:var(--sh-sm)}
+.gsi-btn:disabled{opacity:.55;cursor:not-allowed}
+.gsi-btn:disabled:hover{background:var(--panel);border-color:var(--line3);
+  transform:none;box-shadow:var(--sh-xs)}
+.gsi-logo{width:18px;height:18px;flex:0 0 auto}
+.gsi-or{display:flex;align-items:center;gap:12px;margin:15px 0;
+  color:var(--mut2);font-size:11px;font-weight:600;letter-spacing:.6px}
+.gsi-or::before,.gsi-or::after{content:'';flex:1;height:1px;background:var(--line)}
+.gsi-msg{font-size:12px;line-height:1.55;border-radius:var(--r-sm);
+  padding:10px 12px;margin-bottom:13px;display:none}
+.gsi-msg.show{display:block}
+.gsi-msg.info{background:var(--acc2);border:1px solid var(--acc3);color:var(--txt2)}
+.gsi-msg.err{background:var(--danger-bg);border:1px solid #FECDD3;color:var(--danger)}
+.gsi-spin{display:inline-block;width:13px;height:13px;border:2px solid var(--line3);
+  border-top-color:var(--acc);border-radius:50%;animation:spin .6s linear infinite;
+  vertical-align:-2px;margin-right:6px}
+/* Remember Me row on the sign-in form */
+.gsi-remember{display:flex;align-items:center;gap:8px;font-size:12.5px;
+  color:var(--txt2);cursor:pointer;user-select:none;margin-bottom:13px}
+.gsi-remember input{width:15px;height:15px;flex:0 0 auto;margin:0;padding:0;
+  accent-color:var(--acc);cursor:pointer}
+.gsi-remember input:focus{box-shadow:none}
+/* signed-in-with-Google marker in Manage Users */
+.gsi-chip{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:600;
+  color:var(--mut);background:var(--panel3);border:1px solid var(--line);
+  border-radius:var(--r-full);padding:2px 7px;margin-left:5px}
+
+/* ============================================================
    SETTINGS MODULE
    Additive only — every selector is namespaced .set-* / .sw, and the
    theme work is done by overriding the design tokens already declared
@@ -2217,11 +2254,15 @@ function allAccounts(){
 }
 
 const ROLES = {
-  admin:  {label:'Admin',      canWrite:true,  canExport:true, canDelete:true,  canManageUsers:true},
-  editor: {label:'Editor',     canWrite:true,  canExport:true, canDelete:true,  canManageUsers:false},
-  viewer: {label:'View Only',  canWrite:false, canExport:true, canDelete:false, canManageUsers:false}
+  admin:    {label:'Admin',            canWrite:true,  canExport:true, canDelete:true,  canManageUsers:true},
+  deptadmin:{label:'Department Admin', canWrite:true,  canExport:true, canDelete:true,  canManageUsers:false},
+  editor:   {label:'Editor',           canWrite:true,  canExport:true, canDelete:true,  canManageUsers:false},
+  viewer:   {label:'View Only',        canWrite:false, canExport:true, canDelete:false, canManageUsers:false}
 };
-const ROLE_ICON = {admin:'i-check', editor:'i-edit', viewer:'i-lock'};
+const ROLE_ICON = {admin:'i-check', deptadmin:'i-users', editor:'i-edit', viewer:'i-lock'};
+/* A Department Admin owns their whole department rather than just their own
+   rows — that is the difference between them and an Editor. */
+function isDeptAdmin(){ return role==='deptadmin' && currentUser && currentUser.dept; }
 
 /* ---- MULTI-USER WORKSPACES (Option B: one shared sheet, owner-tagged rows) ----
    Every project carries an ownerId (the id of the user who created it).
@@ -2244,6 +2285,7 @@ function scopeOwnerId(){
 /* does the current user own / may edit this row? */
 function ownsRow(r){
   if(isSuperAdmin()) return true;             // super admin can edit anyone's
+  if(isDeptAdmin() && r.dept===currentUser.dept) return true;   // their department
   const owner = r.ownerId!=null && r.ownerId!=='' ? String(r.ownerId) : '__legacy__';
   return owner===myOwnerId();
 }
@@ -2269,6 +2311,8 @@ function visibleData(){
     return data.filter(r=> String(r.ownerId||'__legacy__')===String(workspaceView));
   }
   if(isViewerOnly()) return data;                                    // viewers see all (read-only)
+  if(isDeptAdmin())                                                  // dept admins: their department
+    return data.filter(r=> r.dept===currentUser.dept);
   const mine=myOwnerId();                                            // editors: only their own
   return data.filter(r=> String(r.ownerId!=null&&r.ownerId!==''?r.ownerId:'__legacy__')===mine);
 }
@@ -2279,6 +2323,7 @@ function inViewScope(r){
     return String(r.ownerId||'__legacy__')===String(workspaceView);
   }
   if(isViewerOnly()) return true;                                    // viewers see all
+  if(isDeptAdmin()) return r.dept===currentUser.dept;
   const mine=myOwnerId();
   return String(r.ownerId!=null&&r.ownerId!==''?r.ownerId:'__legacy__')===mine;
 }
@@ -2900,6 +2945,10 @@ function login(){
     fields:['lg_u','lg_p'],
     render:()=>`
       <div style="max-width:340px">
+        <button class="gsi-btn" id="gsi_btn" onclick="startGoogleSignIn()">
+          ${GOOGLE_G_SVG} Continue with Google Workspace</button>
+        <div class="gsi-msg" id="gsi_msg"></div>
+        <div class="gsi-or">OR</div>
         <div style="margin-bottom:13px"><label>Username</label>
           <input id="lg_u" autocomplete="username" placeholder="e.g. shayeka"
             onkeydown="if(event.key==='Enter')document.getElementById('lg_p').focus()"></div>
@@ -2907,6 +2956,9 @@ function login(){
           <div class="pw-row"><input id="lg_p" type="password" autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
             onkeydown="if(event.key==='Enter')doLogin()">
             <button type="button" class="pw-eye" aria-label="Show password" onclick="togglePw('lg_p',this)"><svg class="ic ic-sm"><use href="#i-eye"/></svg></button></div></div>
+        <label class="gsi-remember" for="lg_remember">
+          <input type="checkbox" id="lg_remember" ${SETTINGS.security.rememberMe?'checked':''}>
+          Remember me on this device</label>
         <div id="lg_msg" style="font-size:12.5px;margin-bottom:13px;min-height:17px"></div>
         <div style="text-align:right;margin:-6px 0 13px">
           <a href="#" class="auth-switch-link" style="font-size:12px" onclick="event.preventDefault();forgotPassword()">Forgot password?</a>
@@ -2918,7 +2970,7 @@ function login(){
           <a href="#" class="auth-switch-link" onclick="event.preventDefault();signup()">Create one</a>
         </div>
       </div>`,
-    after:()=>{ const u=document.getElementById('lg_u'); if(u) u.focus(); }
+    after:()=>{ const u=document.getElementById('lg_u'); if(u) u.focus(); initGoogleButton(); }
   });
 }
 
@@ -2973,6 +3025,7 @@ function recordLogin(username){
 
 function logout(){
   if(currentUser) logAudit('Logout', {user:currentUser.name, email:currentUser.email||''});
+  revokeGoogleSession(false);   // revokes server-side and clears the Google session
   stopPresence();
   role='viewer'; currentUser=null;
   try{ sessionStorage.removeItem('dbl_session'); localStorage.removeItem('dbl_session'); }catch(e){}
@@ -2992,6 +3045,10 @@ function signup(){
     fields:['su_name','su_user','su_email','su_p1','su_p2'],
     render:()=>`
       <div style="max-width:360px">
+        <button class="gsi-btn" id="gsi_btn" onclick="startGoogleSignIn()">
+          ${GOOGLE_G_SVG} Continue with Google Workspace</button>
+        <div class="gsi-msg" id="gsi_msg"></div>
+        <div class="gsi-or">OR</div>
         <div style="margin-bottom:12px"><label>Full name</label>
           <input id="su_name" placeholder="e.g. Karim Rahman"></div>
         <div style="margin-bottom:12px"><label>Username</label>
@@ -3017,7 +3074,7 @@ function signup(){
           <a href="#" class="auth-switch-link" onclick="event.preventDefault();login()">Sign in</a>
         </div>
       </div>`,
-    after:()=>{ const n=document.getElementById('su_name'); if(n) n.focus(); }
+    after:()=>{ const n=document.getElementById('su_name'); if(n) n.focus(); initGoogleButton(); }
   });
 }
 
@@ -3487,6 +3544,7 @@ function manageUsers(){
         <div><label>Search</label><input id="mu_q" placeholder="Name, username, or email" oninput="drawUserTable()"></div>
         <div><label>Role</label><select id="mu_role" onchange="drawUserTable()">
           <option value="">All Roles</option><option value="admin">Admin</option>
+          <option value="deptadmin">Department Admin</option>
           <option value="editor">Editor</option><option value="viewer">Viewer</option></select></div>
         <div><label>Status</label><select id="mu_status" onchange="drawUserTable()">
           <option value="">All</option><option value="active">Active</option><option value="disabled">Disabled</option></select></div>
@@ -3517,7 +3575,8 @@ function drawUserTable(){
       <th>Name</th><th>Username</th><th>Email</th><th>Department</th><th>Role</th><th>Status</th><th>Presence</th>
       <th>Registered</th><th>Last Login</th><th>Actions</th></tr></thead><tbody>
     ${all.map(u=>`<tr>
-      <td><b>${esc(u.name)}</b>${u.builtin?' <span style="color:var(--mut2);font-size:11px">(built-in)</span>':''}</td>
+      <td><b>${esc(u.name)}</b>${u.builtin?' <span style="color:var(--mut2);font-size:11px">(built-in)</span>':''}${
+        u.googleId?`<span class="gsi-chip" title="Linked to a Google Workspace account">Google</span>`:''}</td>
       <td>${esc(u.user)}</td>
       <td style="color:var(--mut)">${esc(u.email)||'\u2014'}</td>
       <td>${u.builtin ? '<span style="color:var(--mut2)">\u2014</span>' : `
@@ -3535,6 +3594,7 @@ function drawUserTable(){
         <select style="display:inline-block;width:auto;padding:4px 8px;font-size:12px" onchange="setUserRole('${u.id}',this.value)">
           <option value="viewer"${u.role==='viewer'?' selected':''}>Viewer</option>
           <option value="editor"${u.role==='editor'?' selected':''}>Editor</option>
+          <option value="deptadmin"${u.role==='deptadmin'?' selected':''}>Department Admin</option>
           <option value="admin"${u.role==='admin'?' selected':''}>Admin</option>
         </select>
         <button class="lnk" onclick="toggleUserDisabled('${u.id}')">${u.disabled?'Enable':'Disable'}</button>
@@ -4876,6 +4936,317 @@ document.addEventListener('keydown', e=>{
   }
 });
 
+/* ================= GOOGLE WORKSPACE AUTHENTICATION =================
+   Google Identity Services on the front, real verification on the back.
+
+   What this file does NOT do, deliberately: it never decides on its own
+   that a Google sign-in is valid. GIS hands us an ID token, we send that
+   token to Code.gs, and Code.gs verifies it with Google, checks the
+   audience, issuer, expiry, verified-email and hosted-domain claims, then
+   issues its own signed session token. Every decision that matters happens
+   where the user cannot reach it.
+
+   If OAuth is not configured, the button explains that in plain language
+   and the email form keeps working. No JavaScript error ever surfaces.
+=================================================================== */
+
+/* official Google "G", inlined so no external image is needed */
+const GOOGLE_G_SVG = `<svg class="gsi-logo" viewBox="0 0 48 48" aria-hidden="true">
+  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+  <path fill="none" d="M0 0h48v48H0z"/></svg>`;
+
+const GIS_SRC = 'https://accounts.google.com/gsi/client';
+const SESSION_STORE = 'dbl_gsession';
+
+let googleConf = null;      // {clientId, domains, configured} from the backend
+let _gisLoaded = false;
+let _gisLoading = null;
+
+/* ---------- config ---------- */
+async function loadGoogleConfig(){
+  if(googleConf) return googleConf;
+  // a Client ID set in Settings works even before the backend knows about it
+  const local = (SETTINGS.google.clientId||'').trim();
+  try{
+    const res = await fetch(API + '?type=googleconf&t=' + Date.now());
+    const j = await res.json();
+    if(j && !j.error){
+      googleConf = {
+        clientId: j.clientId || local,
+        domains: (j.domains && j.domains.length) ? j.domains : localDomains(),
+        configured: !!(j.clientId || local),
+        lastSync: j.lastSync || ''
+      };
+      return googleConf;
+    }
+  }catch(e){ /* backend unreachable — fall through to local config */ }
+  googleConf = { clientId:local, domains:localDomains(), configured:!!local, lastSync:'' };
+  return googleConf;
+}
+function localDomains(){
+  const d=(SETTINGS.google.orgDomain||'').trim().toLowerCase();
+  return d ? [d].concat(DBL_DOMAINS.filter(x=>x!==d)) : DBL_DOMAINS.slice();
+}
+
+/* ---------- GIS script loader ----------
+   Loaded on demand rather than on every page view, so a dashboard that
+   never opens the sign-in dialog makes no third-party request at all. */
+function loadGIS(){
+  if(_gisLoaded) return Promise.resolve(true);
+  if(_gisLoading) return _gisLoading;
+  _gisLoading = new Promise(resolve=>{
+    const s=document.createElement('script');
+    s.src=GIS_SRC; s.async=true; s.defer=true;
+    s.onload =()=>{ _gisLoaded=true; resolve(true); };
+    s.onerror=()=>{ resolve(false); };          // blocked or offline
+    document.head.appendChild(s);
+    setTimeout(()=>resolve(_gisLoaded), 8000);  // never hang the button
+  });
+  return _gisLoading;
+}
+
+function gsiMessage(text, kind){
+  const el=document.getElementById('gsi_msg');
+  if(!el) return;
+  el.className='gsi-msg show '+(kind||'info');
+  el.innerHTML=text;
+}
+function gsiBusy(on, label){
+  const b=document.getElementById('gsi_btn');
+  if(!b) return;
+  b.disabled=!!on;
+  b.innerHTML = on ? `<span class="gsi-spin"></span> ${esc(label||'Signing in…')}`
+                   : `${GOOGLE_G_SVG} Continue with Google Workspace`;
+}
+
+/* prepares the button as soon as a sign-in dialog opens */
+async function initGoogleButton(){
+  const btn=document.getElementById('gsi_btn');
+  if(!btn) return;
+  const cfg=await loadGoogleConfig();
+  if(!cfg.configured){
+    btn.disabled=true;
+    gsiMessage('Google Workspace Sign-In is not configured yet. '
+      + 'Please use your company email and password.'
+      + (isSuperAdmin()?' <a href="#" class="auth-switch-link" onclick="event.preventDefault();closeKPI();setTab(\'settings\');setGo(\'google\')">Set it up</a>':''),
+      'info');
+  }
+}
+
+/* ---------- the sign-in flow ---------- */
+async function startGoogleSignIn(){
+  const cfg=await loadGoogleConfig();
+  if(!cfg.configured){
+    gsiMessage('Google Workspace Sign-In is not configured yet. Please use your company email and password.','info');
+    return;
+  }
+  gsiBusy(true,'Opening Google…');
+
+  const ok=await loadGIS();
+  if(!ok || !window.google || !google.accounts || !google.accounts.id){
+    gsiBusy(false);
+    gsiMessage('Could not reach Google Sign-In. Check your connection, or sign in with your company email and password.','err');
+    return;
+  }
+
+  try{
+    google.accounts.id.initialize({
+      client_id: cfg.clientId,
+      callback: onGoogleCredential,
+      auto_select: false,
+      cancel_on_tap_outside: true,
+      // restricts the account chooser to the org when a single domain is set;
+      // the backend re-checks the domain regardless, so this is convenience
+      hd: cfg.domains.length===1 ? cfg.domains[0] : undefined,
+      ux_mode: 'popup'
+    });
+    google.accounts.id.prompt(n=>{
+      if(n && (n.isNotDisplayed && n.isNotDisplayed() || n.isSkippedMoment && n.isSkippedMoment())){
+        gsiBusy(false);
+        const reason = n.getNotDisplayedReason ? n.getNotDisplayedReason() : '';
+        gsiMessage(reason==='unregistered_origin'
+          ? 'This site’s address is not listed as an authorised JavaScript origin for that Client ID. '
+            + 'Add it in Google Cloud Console, or sign in with your company email and password.'
+          : 'Google did not show the account chooser. You may have a browser setting blocking third-party sign-in — '
+            + 'please use your company email and password.','err');
+      }
+    });
+  }catch(e){
+    gsiBusy(false);
+    gsiMessage('Google Sign-In could not start. Please use your company email and password.','err');
+  }
+}
+
+/* GIS hands the ID token here; everything real happens on the backend */
+async function onGoogleCredential(response){
+  if(!response || !response.credential){
+    gsiBusy(false);
+    gsiMessage('No sign-in was completed. Please try again.','err');
+    return;
+  }
+  gsiBusy(true,'Verifying with Google…');
+
+  const remember = document.getElementById('lg_remember')
+    ? document.getElementById('lg_remember').checked
+    : !!SETTINGS.security.rememberMe;
+
+  let j;
+  try{
+    const res=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({type:'googleAuth', credential:response.credential,
+        rememberMe:remember, device:deviceLabel(), ip:_cachedIP||''})});
+    j=await res.json();
+  }catch(e){
+    gsiBusy(false);
+    gsiMessage('Could not reach the server to complete sign-in. Please try again.','err');
+    return;
+  }
+
+  if(!j || j.error){
+    gsiBusy(false);
+    gsiMessage(esc((j&&j.error) || 'Google sign-in could not be verified.'),'err');
+    logAudit('Google Sign-In',{status:'Failed', user:'(google)', oldValue:'', newValue:(j&&j.code)||'unknown'});
+    return;
+  }
+
+  applyGoogleSession(j, remember);
+  gsiBusy(false);
+  closeKPI();
+  toast(`Signed in as ${j.user.name}.`,'ok');
+  setSync(`✓ Signed in with Google as ${j.user.name} (${(ROLES[j.user.role]||ROLES.viewer).label}).`,'var(--ok)');
+  logAudit('Google Sign-In',{user:j.user.name, email:j.user.email, dept:j.user.dept||'',
+    status:'Success', oldValue:'', newValue:(ROLES[j.user.role]||ROLES.viewer).label});
+  if(j.isNew) notify('user','New User Registered',`${j.user.name} signed in with Google for the first time.`);
+}
+
+function deviceLabel(){
+  const ua=parseUA();
+  return `${ua.browser} on ${ua.device}`;
+}
+
+/* ---------- session handling ---------- */
+function applyGoogleSession(j, remember){
+  currentUser = {id:j.user.id, name:j.user.name, user:j.user.user, role:j.user.role,
+                 email:j.user.email, dept:j.user.dept||'', avatar:j.user.avatar||'', google:true};
+  role = j.user.role || 'viewer';
+
+  const session = {user:currentUser, accessToken:j.accessToken, refreshToken:j.refreshToken,
+                   sid:j.sid, expiresAt:Date.now()+(j.expiresIn||3600000), remember:!!remember};
+  try{
+    sessionStorage.setItem(SESSION_STORE, JSON.stringify(session));
+    if(remember) localStorage.setItem(SESSION_STORE, JSON.stringify(session));
+    else localStorage.removeItem(SESSION_STORE);
+    sessionStorage.setItem('dbl_session', JSON.stringify(currentUser));
+    if(remember) localStorage.setItem('dbl_session', JSON.stringify(currentUser));
+  }catch(e){}
+
+  startPresence();
+  scheduleTokenRefresh(session);
+  applyRole(); render();
+}
+function loadGoogleSession(){
+  try{
+    return JSON.parse(sessionStorage.getItem(SESSION_STORE)
+                   || localStorage.getItem(SESSION_STORE) || 'null');
+  }catch(e){ return null; }
+}
+function clearGoogleSession(){
+  try{ sessionStorage.removeItem(SESSION_STORE); localStorage.removeItem(SESSION_STORE); }catch(e){}
+  clearTimeout(_refreshTimer);
+}
+
+/* refresh a minute before the access token expires, so a long session never
+   has to interrupt the user to re-authenticate */
+let _refreshTimer=null;
+function scheduleTokenRefresh(session){
+  clearTimeout(_refreshTimer);
+  if(!session || !session.refreshToken) return;
+  const wait=Math.max(30000, (session.expiresAt-Date.now()) - 60000);
+  _refreshTimer=setTimeout(refreshGoogleSession, wait);
+}
+async function refreshGoogleSession(){
+  const s=loadGoogleSession();
+  if(!s || !s.refreshToken) return false;
+  try{
+    const res=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({type:'sessionRefresh', refreshToken:s.refreshToken})});
+    const j=await res.json();
+    if(j && j.ok){
+      s.accessToken=j.accessToken;
+      s.expiresAt=Date.now()+(j.expiresIn||3600000);
+      // the role is re-read server-side on every refresh, so a promotion or
+      // demotion by an admin reaches this tab without a re-login
+      if(j.user && j.user.role && j.user.role!==role){
+        role=j.user.role; currentUser.role=j.user.role;
+        applyRole(); render();
+        toast(`Your access level is now ${(ROLES[role]||ROLES.viewer).label}.`,'ok');
+      }
+      s.user=Object.assign({}, s.user, {role:role});
+      try{
+        sessionStorage.setItem(SESSION_STORE, JSON.stringify(s));
+        if(s.remember) localStorage.setItem(SESSION_STORE, JSON.stringify(s));
+      }catch(e){}
+      scheduleTokenRefresh(s);
+      return true;
+    }
+    // revoked, expired or disabled — sign out cleanly rather than half-working
+    clearGoogleSession();
+    if(currentUser && currentUser.google){
+      toast((j && j.error) || 'Your session has ended. Please sign in again.','error');
+      logout();
+    }
+  }catch(e){ /* offline: keep the current token and try again later */
+    scheduleTokenRefresh({...s, expiresAt:Date.now()+5*60000});
+  }
+  return false;
+}
+
+/* auto-login on page load when a stored session is still valid */
+async function restoreGoogleSession(){
+  const s=loadGoogleSession();
+  if(!s || !s.user) return false;
+  currentUser=s.user; role=s.user.role||'viewer';
+  applyRole();
+  if(s.expiresAt && s.expiresAt-Date.now() < 120000) await refreshGoogleSession();
+  else scheduleTokenRefresh(s);
+  return true;
+}
+
+/* secure logout: revoke server-side, clear local state, and tell Google to
+   forget the auto-select choice so the next sign-in is deliberate */
+async function revokeGoogleSession(allDevices){
+  const s=loadGoogleSession();
+  if(s && (s.refreshToken || s.sid)){
+    try{
+      await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify({type:'sessionRevoke', refreshToken:s.refreshToken, sid:s.sid,
+          all:!!allDevices, email:(s.user&&s.user.email)||''})});
+    }catch(e){ /* best effort — the local session is cleared regardless */ }
+  }
+  clearGoogleSession();
+  try{ if(window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect(); }catch(e){}
+}
+async function signOutEverywhere(){
+  if(!confirm('Sign out of every device where this account is signed in?')) return;
+  await revokeGoogleSession(true);
+  toast('Signed out on all devices.','ok');
+  logout();
+}
+async function listMySessions(){
+  const s=loadGoogleSession();
+  const email=(s&&s.user&&s.user.email) || (currentUser&&currentUser.email) || '';
+  if(!email) return [];
+  try{
+    const res=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({type:'sessionList', email})});
+    const j=await res.json();
+    return (j && j.sessions) || [];
+  }catch(e){ return []; }
+}
+
 /* ================= SETTINGS MODULE =================
    Settings live in localStorage and are applied for real: the theme, accent,
    compact mode, default currency, date format, session timeout, password
@@ -4906,7 +5277,8 @@ const DEFAULT_SETTINGS = {
   company:{ legalName:'', address:'', industry:'', registrationNo:'', size:'', fiscalStart:'January' },
   security:{ sessionTimeout:0, rememberMe:false, pwMinLength:8,
              pwUpper:true, pwLower:true, pwNumber:true, pwSpecial:true },
-  google:{ clientId:'', orgDomain:'dbl-group.com' },
+  google:{ clientId:'', orgDomain:'dbl-group.com',
+           extraDomains:'dbl-pharma.com, dblceramics.com', allowList:'' },
   notifications:{ browser:false, system:true, automation:true, security:true,
                   user:true, backup:true, sync:true, audit:true, workspace:true },
   backup:{ autoBackup:false, schedule:'daily', lastBackup:'' },
@@ -5114,6 +5486,86 @@ function renderSettings(){
   // sections that populate themselves after their shell is in the DOM
   if(setSection==='users')  drawUserTable();
   if(setSection==='system') checkSystemStatus();
+  if(setSection==='google'){ loadGoogleConfig().then(()=>{ if(setSection==='google') drawWorkspaceSessions(); }); }
+}
+
+/* ---------- Google Workspace admin helpers ---------- */
+function workspaceDomainList(){
+  const g=setDraft.google;
+  return [g.orgDomain].concat(String(g.extraDomains||'').split(','))
+    .map(s=>String(s||'').trim().toLowerCase()).filter(Boolean).join(',');
+}
+function copyWorkspaceConfigCommand(){
+  const cmd = `configureGoogleAuth(${JSON.stringify((setDraft.google.clientId||'').trim())}, `
+            + `${JSON.stringify(workspaceDomainList())}, `
+            + `${JSON.stringify(String(setDraft.google.allowList||'').trim())});`;
+  const out=document.getElementById('ws_result');
+  if(navigator.clipboard) navigator.clipboard.writeText(cmd).catch(()=>{});
+  if(out) out.innerHTML=`<div class="set-note info"><svg class="ic"><use href="#i-alert"/></svg>
+    <div><div class="set-note-t">Copied — now run it once in Apps Script</div>
+      <div class="set-note-d">Open your Sheet → Extensions → Apps Script, paste this into the editor,
+      select <b>configureGoogleAuth</b> from the function dropdown and press Run.
+      <div style="font-family:monospace;font-size:11.5px;background:var(--panel);border:1px solid var(--line);
+        border-radius:8px;padding:10px;margin-top:8px;overflow-x:auto">${esc(cmd)}</div></div></div></div>`;
+  toast('Setup command copied.','ok');
+}
+async function testWorkspaceConnection(){
+  const out=document.getElementById('ws_result');
+  if(out) out.innerHTML='<div class="set-hint"><span class="gsi-spin"></span> Checking…</div>';
+  googleConf=null;                       // force a fresh read
+  const c=await loadGoogleConfig();
+  const gis=await loadGIS();
+  const rows=[
+    ['Client ID configured', !!c.clientId, c.clientId ? c.clientId.slice(0,28)+'…' : 'Not set'],
+    ['Backend knows the domains', !!(c.domains&&c.domains.length), (c.domains||[]).join(', ')||'None — sign-in would be refused'],
+    ['Google Identity Services reachable', gis, gis?'Loaded':'Blocked or offline'],
+    ['Page served over HTTPS', location.protocol==='https:'||location.hostname==='localhost',
+      location.protocol==='https:'?'Yes':(location.hostname==='localhost'?'localhost (allowed)':'No — Google requires HTTPS')]
+  ];
+  if(out) out.innerHTML=rows.map(([k,ok,v])=>`<div class="set-kv">
+    <span class="set-kv-k">${esc(k)}</span>
+    <span class="set-kv-v" style="color:${ok?'var(--ok)':'var(--danger)'}">${ok?'✓':'✗'} ${esc(v)}</span></div>`).join('');
+}
+async function syncWorkspace(){
+  const out=document.getElementById('ws_result');
+  if(out) out.innerHTML='<div class="set-hint"><span class="gsi-spin"></span> Syncing…</div>';
+  try{
+    const res=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({type:'workspaceSync'})});
+    const j=await res.json();
+    if(!j || j.error) throw new Error((j&&j.error)||'Sync failed');
+    const el=document.getElementById('ws_lastsync'); if(el) el.textContent=fmtStamp(j.lastSync);
+    if(out) out.innerHTML=`<div class="set-kv"><span class="set-kv-k">Accounts</span><span class="set-kv-v">${j.users}</span></div>
+      <div class="set-kv"><span class="set-kv-k">Linked to Google</span><span class="set-kv-v">${j.googleLinked}</span></div>
+      <div class="set-kv"><span class="set-kv-k">Active sessions</span><span class="set-kv-v">${j.activeSessions}</span></div>
+      <div class="set-kv"><span class="set-kv-k">Expired sessions cleared</span><span class="set-kv-v">${j.sessionsPruned}</span></div>`;
+    await refreshUsersFromSheet();
+    toast('Workspace synced.','ok');
+  }catch(e){
+    if(out) out.innerHTML=`<div class="gsi-msg show err">Could not sync: ${esc(e.message)}</div>`;
+    toast('Sync failed.','error');
+  }
+}
+function disconnectWorkspace(){
+  if(!confirm('Disconnect Google Workspace sign-in?\n\nThe button will stop working and everyone will sign in with email and password. Existing accounts are kept.')) return;
+  setField('google','clientId','');
+  saveSettings(true);
+  googleConf=null;
+  logAudit('Settings Changed',{oldValue:'Google Workspace connected',newValue:'Google Workspace disconnected'});
+  renderSettings();
+  toast('Google Workspace disconnected. Remember to clear GOOGLE_CLIENT_ID in Apps Script too.','ok');
+}
+async function drawWorkspaceSessions(){
+  const box=document.getElementById('ws_sessions'); if(!box) return;
+  if(!currentUser){ box.innerHTML='<div class="empty">Sign in to see your sessions.</div>'; return; }
+  const list=await listMySessions();
+  const mine=loadGoogleSession();
+  box.innerHTML = list.length ? list.map(s=>`<div class="set-row">
+      <div class="set-row-txt"><div class="set-row-t">${esc(s.device||'Unknown device')}${
+        mine&&mine.sid===s.sid?' <span style="color:var(--ok);font-size:11.5px">· this device</span>':''}</div>
+        <div class="set-row-d">${esc(s.ip||'IP unknown')} · last active ${relTime(s.lastSeen)}${
+          s.rememberMe?' · remembered':''}</div></div></div>`).join('')
+    : '<div class="empty">No server-side sessions. This account signs in with a password rather than Google.</div>';
 }
 function setGo(key){
   setSection=key;
@@ -5321,32 +5773,64 @@ security: ()=>{
 },
 
 /* ---------- GOOGLE WORKSPACE ---------- */
-google: ()=> setCard('Google Workspace','Single sign-on with your organisation’s Google accounts.',`
-  ${setNote('Not connected',
-    'Connecting needs an OAuth client ID and a server-side token exchange, neither of which exists on this deployment yet. The fields below are stored so they are ready when it does.')}
-  <div class="set-stats" style="margin-bottom:18px">
-    <div class="set-stat"><span class="set-stat-ic"><svg class="ic ic-sm"><use href="#i-alert"/></svg></span>
-      <div><b>Not Connected</b><span>Workspace status</span></div></div>
-    <div class="set-stat"><span class="set-stat-ic"><svg class="ic ic-sm"><use href="#i-user"/></svg></span>
-      <div><b>—</b><span>Connected account</span></div></div>
-  </div>
-  <div class="set-grid">
-    ${setInput('google','clientId','OAuth Client ID',{placeholder:'…apps.googleusercontent.com'})}
-    ${setInput('google','orgDomain','Organisation Domain',
-      {placeholder:'dbl-group.com',hint:'This one is live: sign-ups are restricted to email addresses on this domain.'})}
-  </div>
-  <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
-    <button class="pri" disabled title="Requires an OAuth client">
-      <svg class="ic ic-sm"><use href="#i-cloud"/></svg> Connect Workspace</button>
-    <button disabled>Disconnect</button>
-  </div>`)
+google: ()=>{
+  const c=googleConf;
+  const connected=!!(c && c.configured);
+  const me=currentUser && currentUser.google ? currentUser : null;
+  return setCard('Google Workspace Sign-In','Let your team sign in with their company Google accounts.',`
+    ${connected?'':setNote('Not configured yet',
+      'Add an OAuth Client ID below and the “Continue with Google Workspace” button becomes live. '
+      + 'Until then the sign-in dialog says so plainly and the email form keeps working. '
+      + 'Step-by-step instructions: <b>docs/Google-Workspace-Setup.md</b>.')}
+    <div class="set-stats" style="margin-bottom:18px">
+      <div class="set-stat"><span class="set-stat-ic" style="${connected?'background:var(--ok-bg);color:var(--ok)':''}">
+        <svg class="ic ic-sm"><use href="#${connected?'i-check':'i-alert'}"/></svg></span>
+        <div><b>${connected?'Connected':'Not Connected'}</b><span>OAuth status</span></div></div>
+      <div class="set-stat"><span class="set-stat-ic"><svg class="ic ic-sm"><use href="#i-user"/></svg></span>
+        <div><b>${me?esc(me.email):'—'}</b><span>Your connected account</span></div></div>
+      <div class="set-stat"><span class="set-stat-ic"><svg class="ic ic-sm"><use href="#i-refresh"/></svg></span>
+        <div><b id="ws_lastsync">${c&&c.lastSync?fmtStamp(c.lastSync):'Never'}</b><span>Last sync</span></div></div>
+    </div>
+    <div class="set-grid">
+      ${setInput('google','clientId','OAuth Client ID',
+        {placeholder:'000000-abc123.apps.googleusercontent.com',
+         hint:'From Google Cloud Console → Credentials. Safe to expose — it is a public identifier.'})}
+      ${setInput('google','orgDomain','Primary Organisation Domain',
+        {placeholder:'dbl-group.com',
+         hint:'Live now: restricts both Google sign-in and email sign-up to this domain.'})}
+    </div>
+    <div class="set-field" style="margin-top:16px"><label>Additional Allowed Domains</label>
+      <input value="${esc(setDraft.google.extraDomains||'')}" placeholder="dbl-pharma.com, dblceramics.com"
+        oninput="setField('google','extraDomains',this.value)">
+      <div class="set-hint">Comma-separated. Anyone outside these domains is refused, including personal Gmail.</div></div>
+    <div class="set-field" style="margin-top:16px"><label>Individual Email Exceptions</label>
+      <input value="${esc(setDraft.google.allowList||'')}" placeholder="consultant@gmail.com"
+        oninput="setField('google','allowList',this.value)">
+      <div class="set-hint">Super Admin override — specific addresses allowed in despite the domain rule. Leave blank for none.</div></div>
+    ${setNote('These values must also be set on the backend',
+      'Domain checks are enforced in Code.gs, where a user cannot reach them — storing them here alone would not secure anything. '
+      + 'Use the button below to copy the exact one-line command to run in the Apps Script editor.',true)}
+    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="pri" onclick="copyWorkspaceConfigCommand()">
+        <svg class="ic ic-sm"><use href="#i-clipboard"/></svg> Copy backend setup command</button>
+      <button onclick="testWorkspaceConnection()">
+        <svg class="ic ic-sm"><use href="#i-zap"/></svg> Test Connection</button>
+      <button onclick="syncWorkspace()"><svg class="ic ic-sm"><use href="#i-refresh"/></svg> Sync Users</button>
+      ${connected?`<button class="lnk dgr" style="height:auto;padding:9px 15px" onclick="disconnectWorkspace()">Disconnect Workspace</button>`:''}
+    </div>
+    <div id="ws_result" style="margin-top:14px"></div>`)
+  + setCard('Your Sessions','Every device currently signed in with this account.',`
+    <div id="ws_sessions"><div class="set-hint">Loading…</div></div>
+    <div style="margin-top:14px"><button class="lnk dgr" onclick="signOutEverywhere()">
+      Sign out on all devices</button></div>`)
   + setCard('Google Sheet Sync','This part is live — it is how the dashboard stores its data.',`
     ${setKV('Last sync', lastSync?fmtStamp(lastSync.toISOString()):'Not synced yet')}
     ${setKV('Sheet endpoint', `<span style="font-family:monospace;font-size:11.5px">${esc((SETTINGS.api.sheetUrl||API).slice(0,58))}…</span>`)}
     <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
       <button class="pri" onclick="cloudLoad(true)"><svg class="ic ic-sm"><use href="#i-refresh"/></svg> Sync Now</button>
       <button class="adm" onclick="cloudSave()"><svg class="ic ic-sm"><use href="#i-cloud"/></svg> Save to Sheet</button>
-    </div>`),
+    </div>`);
+},
 
 /* ---------- NOTIFICATIONS ---------- */
 notifications: ()=> setCard('Delivery','Where notifications are shown.',`
@@ -6181,6 +6665,9 @@ asvWireForm();
 asvRestoreDraft();
 checkResetTokenInUrl();   // if this page was opened from an emailed reset link
 initNotifications();      // builds the dropdown panel and paints the bell badge
+
+/* auto-login: restore a valid Google session before anything renders */
+restoreGoogleSession();
 
 /* ---- settings: apply before the first paint so nothing flashes ---- */
 if(SETTINGS.api.sheetUrl) API = SETTINGS.api.sheetUrl;      // custom backend, if set

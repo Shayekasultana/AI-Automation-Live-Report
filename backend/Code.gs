@@ -32,7 +32,8 @@ var SHEETS = {
   users:    'Users',
   presence: 'Presence',
   access:   'AccessLog',
-  resets:   'PasswordResets'
+  resets:   'PasswordResets',
+  sessions: 'Sessions'
 };
 
 /* Column order for the Tasks sheet. Adding a field? Append it to the END of
@@ -58,7 +59,10 @@ var TASK_NUMBER_FIELDS = [
   'costSavedPerExecution', 'monthlyCostSaved'
 ];
 
-var USER_COLS = ['id', 'name', 'user', 'email', 'dept', 'role', 'pw', 'disabled', 'createdAt'];
+/* googleId / avatar / hd / lastLogin are appended at the END so an existing
+   Users sheet keeps every column it already had in the same position. */
+var USER_COLS = ['id', 'name', 'user', 'email', 'dept', 'role', 'pw', 'disabled', 'createdAt',
+                 'googleId', 'avatar', 'hd', 'lastLogin'];
 var PRESENCE_COLS = ['user', 'status', 'lastActivity', 'viewer', 'location'];
 var ACCESS_COLS = ['time', 'viewer', 'location'];
 var RESET_COLS = ['token', 'email', 'user', 'expiresAt', 'used', 'createdAt'];
@@ -74,9 +78,10 @@ function doGet(e) {
   try {
     var type = (e && e.parameter && e.parameter.type) || 'tasks';
     switch (type) {
-      case 'users':     return json({ users: readUsers(true) });
-      case 'presence':  return json({ presence: readPresence() });
-      case 'accesslog': return json({ entries: readAccessLog() });
+      case 'users':      return json({ users: readUsers(true) });
+      case 'presence':   return json({ presence: readPresence() });
+      case 'accesslog':  return json({ entries: readAccessLog() });
+      case 'googleconf': return json(readGoogleConfig());
       default:          return json({ data: readTasks(), roster: readRoster() });
     }
   } catch (err) {
@@ -99,6 +104,11 @@ function doPost(e) {
       case 'presence':      return json(handlePresence(body));
       case 'accesslog':     return json(handleAccessLog(body));
       case 'passwordReset': return json(handlePasswordReset(body));
+      case 'googleAuth':    return json(handleGoogleAuth(body));
+      case 'sessionRefresh':return json(handleSessionRefresh(body));
+      case 'sessionRevoke': return json(handleSessionRevoke(body));
+      case 'sessionList':   return json(handleSessionList(body));
+      case 'workspaceSync': return json(handleWorkspaceSync());
       default:              return json({ error: 'Unknown type: ' + type });
     }
   } catch (err) {
@@ -304,7 +314,11 @@ function readUsers(includeHash) {
       dept:      asText(row.dept),
       role:      asText(row.role) || 'editor',
       disabled:  toBool(row.disabled),
-      createdAt: asText(row.createdAt)
+      createdAt: asText(row.createdAt),
+      googleId:  asText(row.googleId),
+      avatar:    asText(row.avatar),
+      hd:        asText(row.hd),
+      lastLogin: asText(row.lastLogin)
     };
     if (includeHash) u.pw = asText(row.pw);
     return u;
@@ -521,6 +535,323 @@ function consumeResetToken(token) {
   return { valid: false, reason: 'not found' };
 }
 
+/* ================================================================== *
+ * GOOGLE WORKSPACE AUTHENTICATION
+ *
+ * The browser cannot verify a Google ID token — anything it checks, a
+ * user can bypass. So the whole verification happens here:
+ *
+ *   1. The page runs Google Identity Services and receives an ID token.
+ *   2. It POSTs that token to this backend and nothing else.
+ *   3. We verify the token WITH GOOGLE, then check the audience, issuer,
+ *      expiry, email verification and hosted domain.
+ *   4. Only then do we create or link the account and issue OUR OWN
+ *      signed session token, which the page uses from then on.
+ *
+ * A forged or replayed token fails at step 3, on the server, where the
+ * user has no reach.
+ * ================================================================== */
+
+var GOOGLE_TOKENINFO = 'https://oauth2.googleapis.com/tokeninfo?id_token=';
+var ACCESS_TOKEN_TTL_MS  = 60 * 60 * 1000;             // 1 hour
+var REFRESH_TTL_MS       = 30 * 24 * 60 * 60 * 1000;   // 30 days with Remember Me
+var REFRESH_TTL_SHORT_MS = 12 * 60 * 60 * 1000;        // 12 hours without
+
+var SESSION_COLS = ['sid','user','email','refreshToken','device','ip',
+                    'createdAt','lastSeen','expiresAt','rememberMe','revoked'];
+
+/* --- config, held in Script Properties so it is never in the page source --- */
+function googleConfig(){
+  var p = PropertiesService.getScriptProperties();
+  var domains = (p.getProperty('ALLOWED_DOMAINS') || '')
+    .split(',').map(function(s){ return s.trim().toLowerCase(); })
+    .filter(function(s){ return s; });
+  return {
+    clientId:  p.getProperty('GOOGLE_CLIENT_ID') || '',
+    domains:   domains,
+    allowList: (p.getProperty('EMAIL_ALLOWLIST') || '')
+      .split(',').map(function(s){ return s.trim().toLowerCase(); })
+      .filter(function(s){ return s; })
+  };
+}
+
+/** Public config for the sign-in page. Never returns the session secret. */
+function readGoogleConfig(){
+  var c = googleConfig();
+  return {
+    clientId:   c.clientId,
+    domains:    c.domains,
+    configured: !!c.clientId,
+    lastSync:   PropertiesService.getScriptProperties().getProperty('WS_LAST_SYNC') || ''
+  };
+}
+
+/** HMAC secret for our own session tokens; generated once, kept server-side. */
+function sessionSecret(){
+  var p = PropertiesService.getScriptProperties();
+  var s = p.getProperty('SESSION_SECRET');
+  if (!s) { s = Utilities.getUuid() + Utilities.getUuid(); p.setProperty('SESSION_SECRET', s); }
+  return s;
+}
+
+function b64url(bytes){
+  return Utilities.base64EncodeWebSafe(bytes).replace(/=+$/, '');
+}
+/** Compact signed token: base64url(payload).base64url(HMAC-SHA256) */
+function signToken(payload){
+  var body = b64url(Utilities.newBlob(JSON.stringify(payload)).getBytes());
+  var sig  = b64url(Utilities.computeHmacSha256Signature(body, sessionSecret()));
+  return body + '.' + sig;
+}
+function verifyToken(token){
+  if (!token || token.indexOf('.') < 0) return null;
+  var parts = String(token).split('.');
+  if (parts.length !== 2) return null;
+  var expected = b64url(Utilities.computeHmacSha256Signature(parts[0], sessionSecret()));
+  // constant-time-ish compare: length first, then every character
+  if (expected.length !== parts[1].length) return null;
+  var diff = 0;
+  for (var i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ parts[1].charCodeAt(i);
+  if (diff !== 0) return null;
+  var payload;
+  try { payload = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(parts[0])).getDataAsString()); }
+  catch (e) { return null; }
+  if (!payload.exp || payload.exp < Date.now()) return null;   // expired
+  return payload;
+}
+
+/** Is this email allowed to sign in? */
+function domainAllowed(email, hd){
+  var c = googleConfig();
+  var lower = String(email || '').toLowerCase();
+  var domain = lower.split('@')[1] || '';
+
+  // an explicit per-address allowlist always wins — this is how the Super
+  // Admin lets an individual personal account in
+  if (c.allowList.indexOf(lower) >= 0) return true;
+
+  // no domains configured yet: fail closed rather than letting anyone in
+  if (!c.domains.length) return false;
+
+  // prefer Google's hosted-domain claim, which a user cannot spoof by
+  // editing their profile email
+  var effective = (hd || domain).toLowerCase();
+  return c.domains.indexOf(effective) >= 0;
+}
+
+/**
+ * Verify the ID token with Google. tokeninfo checks the signature and
+ * expiry against Google's own keys; we then check the claims that are
+ * specific to THIS application.
+ */
+function verifyGoogleIdToken(idToken){
+  var c = googleConfig();
+  if (!c.clientId) return { ok:false, code:'not_configured' };
+
+  var res;
+  try {
+    res = UrlFetchApp.fetch(GOOGLE_TOKENINFO + encodeURIComponent(idToken), { muteHttpExceptions:true });
+  } catch (e) {
+    return { ok:false, code:'network', detail:String(e) };
+  }
+  if (res.getResponseCode() !== 200) return { ok:false, code:'invalid_token' };
+
+  var claims;
+  try { claims = JSON.parse(res.getContentText()); } catch (e) { return { ok:false, code:'invalid_token' }; }
+
+  if (claims.aud !== c.clientId) return { ok:false, code:'wrong_audience' };
+  if (['accounts.google.com','https://accounts.google.com'].indexOf(claims.iss) < 0)
+    return { ok:false, code:'wrong_issuer' };
+  if (Number(claims.exp) * 1000 <= Date.now()) return { ok:false, code:'expired' };
+  if (String(claims.email_verified) !== 'true') return { ok:false, code:'email_unverified' };
+  if (!claims.email) return { ok:false, code:'no_email' };
+  if (!domainAllowed(claims.email, claims.hd)) return { ok:false, code:'domain_denied', email:claims.email };
+
+  return { ok:true, claims:claims };
+}
+
+/* --- sessions --- */
+function createSession(user, rememberMe, device, ip){
+  var sh = sheet(SHEETS.sessions, SESSION_COLS);
+  var sid = Utilities.getUuid();
+  var refresh = Utilities.getUuid() + Utilities.getUuid();
+  var ttl = rememberMe ? REFRESH_TTL_MS : REFRESH_TTL_SHORT_MS;
+  sh.appendRow([sid, user.user, user.email, refresh, device || '', ip || '',
+                nowIso(), nowIso(), new Date(Date.now() + ttl).toISOString(),
+                !!rememberMe, false]);
+  return { sid:sid, refreshToken:refresh, expiresAt:Date.now() + ttl };
+}
+function accessTokenFor(user, sid){
+  return signToken({
+    sub:user.id, user:user.user, email:user.email, role:user.role,
+    dept:user.dept || '', sid:sid,
+    iat:Date.now(), exp:Date.now() + ACCESS_TOKEN_TTL_MS
+  });
+}
+
+function handleGoogleAuth(body){
+  var v = verifyGoogleIdToken(body.credential);
+  if (!v.ok) return { error:googleAuthMessage(v), code:v.code };
+
+  var claims = v.claims;
+  var email  = String(claims.email).toLowerCase();
+
+  var sh   = sheet(SHEETS.users, USER_COLS);
+  var rows = readRows(sh);
+
+  // ACCOUNT LINKING: match on email first so a person who already signed up
+  // with a password gets their Google account attached instead of a duplicate
+  var idx = -1;
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i].email || '').toLowerCase() === email) { idx = i; break; }
+  }
+
+  var isNew = false;
+  if (idx < 0) {
+    // create — new Google users always start as viewer; only an admin promotes
+    rows.push({
+      id:'u_' + Utilities.getUuid().slice(0, 10),
+      name:claims.name || email.split('@')[0],
+      user:email.split('@')[0].toLowerCase().replace(/[^a-z0-9_.]/g, ''),
+      email:email, dept:'', role:'viewer', pw:'',
+      disabled:false, createdAt:nowIso(),
+      googleId:claims.sub, avatar:claims.picture || '', hd:claims.hd || '',
+      lastLogin:nowIso()
+    });
+    idx = rows.length - 1;
+    isNew = true;
+  } else {
+    // link + refresh profile details from Google
+    rows[idx].googleId  = claims.sub;
+    rows[idx].avatar    = claims.picture || rows[idx].avatar || '';
+    rows[idx].hd        = claims.hd || rows[idx].hd || '';
+    rows[idx].lastLogin = nowIso();
+    if (!rows[idx].name && claims.name) rows[idx].name = claims.name;
+  }
+
+  if (toBool(rows[idx].disabled)) return { error:'This account has been disabled. Contact an administrator.', code:'disabled' };
+
+  writeRows(sh, USER_COLS, rows);
+
+  var user = {
+    id:String(rows[idx].id), name:String(rows[idx].name), user:String(rows[idx].user),
+    email:email, role:String(rows[idx].role || 'viewer'), dept:String(rows[idx].dept || ''),
+    avatar:String(rows[idx].avatar || ''), hd:String(rows[idx].hd || '')
+  };
+  var s = createSession(user, body.rememberMe, body.device, body.ip);
+
+  return {
+    ok:true, isNew:isNew, user:user, sid:s.sid,
+    accessToken:accessTokenFor(user, s.sid),
+    refreshToken:s.refreshToken,
+    expiresIn:ACCESS_TOKEN_TTL_MS
+  };
+}
+
+/** Plain-English reason, safe to show a user. */
+function googleAuthMessage(v){
+  switch (v.code) {
+    case 'not_configured':
+      return 'Google Workspace Sign-In is not configured yet. Please use your company email and password.';
+    case 'domain_denied':
+      return 'The account ' + (v.email || '') + ' is not on an approved company domain. ' +
+             'Ask your administrator to add your domain, or sign in with your company email and password.';
+    case 'email_unverified': return 'This Google account does not have a verified email address.';
+    case 'wrong_audience':   return 'This sign-in was issued for a different application. Check the Client ID in Settings.';
+    case 'expired':          return 'That sign-in attempt expired. Please try again.';
+    case 'network':          return 'Could not reach Google to verify the sign-in. Please try again.';
+    default:                 return 'Google sign-in could not be verified. Please try again, or use your company email and password.';
+  }
+}
+
+/** Exchange a refresh token for a new access token. */
+function handleSessionRefresh(body){
+  var sh = sheet(SHEETS.sessions, SESSION_COLS);
+  var rows = readRows(sh);
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i].refreshToken) === String(body.refreshToken)) {
+      if (toBool(rows[i].revoked)) return { error:'This session was signed out.', code:'revoked' };
+      if (new Date(asText(rows[i].expiresAt)).getTime() < Date.now())
+        return { error:'Your session has expired. Please sign in again.', code:'expired' };
+
+      var users = readUsers(false);
+      var u = null;
+      for (var j = 0; j < users.length; j++) {
+        if (users[j].email && users[j].email.toLowerCase() === String(rows[i].email).toLowerCase()) { u = users[j]; break; }
+      }
+      if (!u) return { error:'Account no longer exists.', code:'gone' };
+      if (u.disabled) return { error:'This account has been disabled.', code:'disabled' };
+
+      rows[i].lastSeen = nowIso();
+      writeRows(sh, SESSION_COLS, rows);
+
+      // the role is re-read from the sheet on every refresh, so a promotion
+      // or demotion takes effect within the access-token lifetime
+      return { ok:true, user:u, accessToken:accessTokenFor(u, String(rows[i].sid)), expiresIn:ACCESS_TOKEN_TTL_MS };
+    }
+  }
+  return { error:'Session not found. Please sign in again.', code:'not_found' };
+}
+
+/** Sign out: one device, or every device for this account. */
+function handleSessionRevoke(body){
+  var sh = sheet(SHEETS.sessions, SESSION_COLS);
+  var rows = readRows(sh);
+  var n = 0;
+  rows.forEach(function(r){
+    var match = body.all
+      ? String(r.email).toLowerCase() === String(body.email || '').toLowerCase()
+      : (String(r.refreshToken) === String(body.refreshToken) || String(r.sid) === String(body.sid));
+    if (match && !toBool(r.revoked)) { r.revoked = true; n++; }
+  });
+  writeRows(sh, SESSION_COLS, rows);
+  return { ok:true, revoked:n };
+}
+
+/** Active sessions for an account — powers the multi-device list. */
+function handleSessionList(body){
+  var email = String(body.email || '').toLowerCase();
+  var out = readRows(sheet(SHEETS.sessions, SESSION_COLS))
+    .filter(function(r){
+      return String(r.email).toLowerCase() === email && !toBool(r.revoked) &&
+             new Date(asText(r.expiresAt)).getTime() > Date.now();
+    })
+    .map(function(r){
+      return { sid:asText(r.sid), device:asText(r.device), ip:asText(r.ip),
+               createdAt:asText(r.createdAt), lastSeen:asText(r.lastSeen),
+               rememberMe:toBool(r.rememberMe) };
+    });
+  return { ok:true, sessions:out };
+}
+
+/**
+ * "Sync Users" from the admin screen.
+ *
+ * Honest scope: pulling the full member list of a Workspace needs the Admin
+ * SDK Directory API plus domain-wide delegation, which is a separate consent
+ * flow this script does not hold. What this does instead is real and useful:
+ * it re-reads the Users sheet, drops expired sessions, and reports the
+ * counts, so the admin screen reflects the true current state.
+ */
+function handleWorkspaceSync(){
+  var users = readUsers(false);
+  var sh = sheet(SHEETS.sessions, SESSION_COLS);
+  var rows = readRows(sh);
+  var before = rows.length;
+  var kept = rows.filter(function(r){
+    return !toBool(r.revoked) && new Date(asText(r.expiresAt)).getTime() > Date.now();
+  });
+  writeRows(sh, SESSION_COLS, kept);
+  PropertiesService.getScriptProperties().setProperty('WS_LAST_SYNC', nowIso());
+  return {
+    ok:true, lastSync:nowIso(),
+    users:users.length,
+    googleLinked:users.filter(function(u){ return u.googleId; }).length,
+    sessionsPruned:before - kept.length,
+    activeSessions:kept.length
+  };
+}
+
 /* ------------------------------------------------------------------ *
  * One-time setup — run from the Apps Script editor
  * ------------------------------------------------------------------ */
@@ -533,7 +864,35 @@ function setup() {
   sheet(SHEETS.presence, PRESENCE_COLS);
   sheet(SHEETS.access, ACCESS_COLS);
   sheet(SHEETS.resets, RESET_COLS);
+  sheet(SHEETS.sessions, SESSION_COLS);
+  sessionSecret();                     // generate the signing key on first run
   Logger.log('All sheets ready.');
+}
+
+/**
+ * Configure Google Workspace sign-in. Run once from the editor, or set the
+ * same three Script Properties by hand under Project Settings.
+ *
+ *   configureGoogleAuth('123-abc.apps.googleusercontent.com',
+ *                       'dbl-group.com,dbl-pharma.com,dblceramics.com');
+ */
+function configureGoogleAuth(clientId, allowedDomains, emailAllowList){
+  var p = PropertiesService.getScriptProperties();
+  p.setProperty('GOOGLE_CLIENT_ID', clientId || '');
+  p.setProperty('ALLOWED_DOMAINS', allowedDomains || '');
+  if (emailAllowList !== undefined) p.setProperty('EMAIL_ALLOWLIST', emailAllowList || '');
+  sessionSecret();
+  Logger.log('Google auth configured for: ' + (allowedDomains || '(none — sign-in will be refused)'));
+  return readGoogleConfig();
+}
+
+/** Drops expired and revoked sessions. Attach to a daily trigger if you like. */
+function pruneSessions(){
+  var sh = sheet(SHEETS.sessions, SESSION_COLS);
+  var kept = readRows(sh).filter(function(r){
+    return !toBool(r.revoked) && new Date(asText(r.expiresAt)).getTime() > Date.now();
+  });
+  writeRows(sh, SESSION_COLS, kept);
 }
 
 /** Deletes presence rows that have been offline for over a day. Attach to a

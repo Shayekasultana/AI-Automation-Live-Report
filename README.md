@@ -22,6 +22,7 @@ scripts/serve.js      zero-dependency static server for local use
 docs/
   SETUP.md            deploy the Sheet backend and point the app at it
   API.md              endpoint and storage reference
+  Google-Workspace-Setup.md   turn on Google sign-in
   Password-Reset-Setup.md
 archive/              the original single-file dashboard, kept verbatim
 ```
@@ -43,8 +44,16 @@ splitting it into modules would cost more than the tidiness is worth here.
 | --- | --- | --- |
 | **Viewer** (default, signed out) | every automation, read-only | export, print |
 | **Editor** (self-service signup) | only their own automations | create, edit, delete, export |
+| **Department Admin** | their whole department | create, edit, delete within it |
 | **Admin** | as editor | plus user management if promoted |
 | **Super Admin** (`shayeka`) | everything, plus per-user workspaces | all of the above, plus Manage Users, Access Log, Audit Logs |
+
+Sign-in is by company email and password, or **Continue with Google
+Workspace** once configured — see
+[`docs/Google-Workspace-Setup.md`](docs/Google-Workspace-Setup.md). Google ID
+tokens are verified server-side in `Code.gs` against Google, then checked for
+audience, issuer, expiry, verified email and hosted domain before any account
+is created or linked. New Google users always start as Viewer.
 
 New signups become editors with a private workspace, and must use a DBL company
 email. Rows carry an `ownerId`; rows predating workspaces are treated as

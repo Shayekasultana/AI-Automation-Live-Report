@@ -813,6 +813,86 @@ body.admin .dt-v.ed:hover{background:var(--acc2);box-shadow:inset 0 0 0 1px var(
 .lnk[disabled]{color:var(--mut2);cursor:not-allowed;box-shadow:none;opacity:.6}
 .lnk[disabled]:hover{background:var(--panel);border-color:var(--line);transform:none}
 
+/* ============================================================
+   NOTIFICATION CENTER
+   Purely additive — every selector is namespaced .nc-* so nothing
+   above is overridden. The panel is position:fixed and lives on
+   <body>, not inside <header>, because header{overflow:hidden}
+   (needed by its glow ::after) would otherwise clip the dropdown.
+   ============================================================ */
+.nc-wrap{position:relative;display:inline-flex}
+.nc-bell{position:relative;padding:9px 12px}
+.nc-badge{position:absolute;top:-6px;right:-6px;min-width:19px;height:19px;padding:0 5px;
+  border-radius:var(--r-full);background:var(--danger);color:#fff;font-size:10.5px;
+  font-weight:700;line-height:1;display:grid;place-items:center;
+  border:2px solid #33495F;font-variant-numeric:tabular-nums;pointer-events:none}
+.nc-badge.pop{animation:ncPop .45s var(--ease)}
+@keyframes ncPop{0%{transform:scale(1)}35%{transform:scale(1.5)}100%{transform:scale(1)}}
+.nc-bell.ring svg{animation:ncRing .7s var(--ease)}
+@keyframes ncRing{0%,100%{transform:rotate(0)}20%{transform:rotate(14deg)}
+  40%{transform:rotate(-11deg)}60%{transform:rotate(7deg)}80%{transform:rotate(-4deg)}}
+
+.nc-panel{position:fixed;width:380px;max-height:500px;z-index:890;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);
+  box-shadow:var(--sh-xl);display:flex;flex-direction:column;overflow:hidden;
+  opacity:0;transform:translateY(-8px) scale(.985);pointer-events:none;
+  transition:opacity var(--base) var(--ease),transform var(--base) var(--ease)}
+.nc-panel.open{opacity:1;transform:none;pointer-events:auto}
+
+.nc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--s3);
+  padding:15px 17px 13px;border-bottom:1px solid var(--line);flex:0 0 auto;background:var(--panel)}
+.nc-h3{font-size:15px;font-weight:700;color:var(--txt);letter-spacing:-.2px;line-height:1.2}
+.nc-unread{display:block;font-size:11.5px;color:var(--mut);margin-top:2px;font-weight:500}
+.nc-head-actions{display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex:0 0 auto}
+.nc-act{background:none;border:none;box-shadow:none;padding:2px 4px;font-size:11.5px;
+  font-weight:600;color:var(--acc);cursor:pointer;border-radius:var(--r-xs);white-space:nowrap}
+.nc-act:hover{background:var(--acc2);color:var(--acc);transform:none;box-shadow:none}
+.nc-act-dgr{color:var(--mut)}
+.nc-act-dgr:hover{background:var(--danger-bg);color:var(--danger)}
+
+.nc-list{overflow-y:auto;flex:1 1 auto;min-height:0}
+.nc-item{display:flex;gap:11px;padding:12px 15px;border-bottom:1px solid var(--line2);
+  cursor:pointer;transition:background var(--fast) var(--ease);position:relative}
+.nc-item:last-child{border-bottom:none}
+.nc-item:hover{background:var(--panel2)}
+.nc-item.unread{background:#F7FBFE}
+.nc-item.unread:hover{background:var(--acc2)}
+.nc-ic{width:34px;height:34px;border-radius:9px;flex:0 0 auto;display:grid;place-items:center}
+.nc-body{flex:1;min-width:0}
+.nc-title{font-size:13px;font-weight:600;color:var(--txt);line-height:1.35}
+.nc-item.unread .nc-title{font-weight:700}
+.nc-desc{font-size:12px;color:var(--mut);line-height:1.45;margin-top:2px;
+  overflow-wrap:anywhere}
+.nc-meta{display:flex;align-items:center;gap:7px;margin-top:5px}
+.nc-cat{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--mut2);background:var(--panel3);border-radius:var(--r-xs);padding:2px 6px}
+.nc-time{font-size:10.5px;color:var(--mut2)}
+.nc-side{display:flex;flex-direction:column;align-items:center;gap:7px;flex:0 0 auto}
+.nc-dot{width:8px;height:8px;border-radius:50%;background:var(--acc);flex:0 0 auto;margin-top:3px}
+.nc-del{background:none;border:none;box-shadow:none;padding:2px;color:var(--mut2);
+  cursor:pointer;border-radius:var(--r-xs);opacity:0;transition:opacity var(--fast),color var(--fast)}
+.nc-item:hover .nc-del{opacity:1}
+.nc-del:hover{color:var(--danger);background:var(--danger-bg);transform:none;box-shadow:none}
+.nc-empty{padding:34px 20px;text-align:center;color:var(--mut);font-size:12.5px;line-height:1.7}
+.nc-empty svg{width:26px;height:26px;color:var(--line3);display:block;margin:0 auto 9px}
+
+.nc-foot{flex:0 0 auto;border-top:1px solid var(--line);padding:9px;background:var(--panel2)}
+.nc-viewall{width:100%;justify-content:center;background:none;border:none;box-shadow:none;
+  font-size:12.5px;font-weight:600;color:var(--acc);padding:8px}
+.nc-viewall:hover{background:var(--acc2);color:var(--acc);transform:none;box-shadow:none}
+
+/* status pills reused on the View All page */
+.nc-badge-unread{background:var(--acc2);color:var(--acc);border-color:var(--acc3)}
+.nc-badge-read{background:var(--panel3);color:var(--mut);border-color:var(--line)}
+
+@media(max-width:460px){
+  .nc-panel{width:calc(100vw - 20px)!important;left:10px!important}
+  .nc-head-actions{flex-direction:row;gap:8px}
+}
+@media(prefers-reduced-motion:reduce){
+  .nc-badge.pop,.nc-bell.ring svg{animation:none}
+}
+
 /* ---------- responsive ---------- */
 @media(max-width:900px){
   .grid,.mgrid{grid-template-columns:1fr}
@@ -894,6 +974,13 @@ body.admin .dt-v.ed:hover{background:var(--acc2);box-shadow:inset 0 0 0 1px var(
 <g id="i-target"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></g>
 <g id="i-save"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></g>
 <g id="i-rotate"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></g>
+<!-- Notification Center — Lucide glyphs, same sprite pattern as above -->
+<g id="i-bell"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></g>
+<g id="i-shield"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></g>
+<g id="i-settings"><path d="M20 7h-9M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></g>
+<g id="i-trash"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6M14 11v6"/></g>
+<g id="i-check-check"><path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/></g>
+<g id="i-x"><path d="M18 6 6 18M6 6l12 12"/></g>
 </defs></svg>
 
 <header>
@@ -912,6 +999,13 @@ body.admin .dt-v.ed:hover{background:var(--acc2);box-shadow:inset 0 0 0 1px var(
     </div>
   </div>
   <div class="btns">
+    <div class="nc-wrap">
+      <button class="nc-bell" id="nc_bell" title="Notifications" aria-label="Notifications"
+              aria-expanded="false" onclick="toggleNotifPanel(event)">
+        <svg class="ic"><use href="#i-bell"/></svg>
+        <span class="nc-badge" id="nc_badge" style="display:none">0</span>
+      </button>
+    </div>
     <button class="pri adm" onclick="cloudSave()"><svg class="ic"><use href="#i-cloud"/></svg> Save to Sheet</button>
     <button onclick="cloudLoad(true)"><svg class="ic"><use href="#i-refresh"/></svg> Reload from Sheet</button>
     <button class="adm" data-perm="export" onclick="exportJSON()"><svg class="ic"><use href="#i-download"/></svg> Backup File</button>
@@ -1322,6 +1416,7 @@ function quickAddUser(){
   roster[d].push(n);
   q_name.value=''; q_dept.value=''; q_name.focus();
   msg(`✓ ${esc(n)} added to ${esc(d)}.`,'var(--ok)');
+  notify('user','User Added',`${n} was added to ${d}.`);
   markDirty(); render();
 }
 
@@ -1338,6 +1433,7 @@ function addRoster(){
   roster[d].push(n);
   r_name.value=''; r_name.focus();
   msg(`✓ ${esc(n)} added to ${esc(d)}.`,'var(--ok)');
+  notify('user','User Added',`${n} was added to ${d}.`);
   markDirty(); render();
 }
 function addDept(){
@@ -1350,6 +1446,7 @@ function addDept(){
   roster[d]=[];
   r_newdept.value='';
   msg(`✓ Department "${esc(d)}" created.`,'var(--ok)');
+  notify('workspace','Department Added',`“${d}” was added to the roster.`);
   markDirty(); render();
   r_dept.value=d;
 }
@@ -2389,6 +2486,8 @@ function logAudit(action, opts){
   list.push(entry);
   saveAuditLog(list);
   if(document.getElementById('audit_table')) renderAuditTable();
+  // every audited event is also a candidate notification — see NOTIF_FROM_AUDIT
+  if(typeof notifyFromAudit==='function') notifyFromAudit(entry);
 }
 
 /* record this page load once, shortly after the app starts */
@@ -4582,6 +4681,388 @@ document.addEventListener('keydown', e=>{
   }
 });
 
+/* ================= NOTIFICATION CENTER =================
+   Notifications are raised by real events in this app and stored locally
+   (localStorage, newest first, capped at 300 — same approach as the Audit
+   Log). Two honesty notes on scope:
+
+   - "Real-time" here means events raise a notification the instant they
+     happen in this tab: the badge increments, animates, and a toast appears
+     with no refresh. There is no push channel, so notifications another
+     PERSON generates are picked up on the existing 60s Sheet poll, not
+     instantly — cloudLoad() below spots automations that appeared from
+     someone else and raises one then. Genuinely instant cross-device push
+     would need a backend endpoint, like presence has.
+   - Nothing here is seeded with fake sample data. The panel starts empty and
+     fills with your actual activity. Run seedDemoNotifications() in the
+     console if you want to see it populated for a demo.
+========================================================= */
+const NOTIF_KEY = 'dbl_notifications';
+const NOTIF_MAX = 300;
+const NOTIF_PAGE_SIZE = 12;
+
+const NOTIF_CATS = {
+  system:     {label:'System',             icon:'i-settings',  color:'#64748B'},
+  automation: {label:'Automation',         icon:'i-zap',       color:'#1175BC'},
+  security:   {label:'Security',           icon:'i-shield',    color:'#E11D48'},
+  user:       {label:'User',               icon:'i-user',      color:'#0284C7'},
+  backup:     {label:'Backup',             icon:'i-save',      color:'#7C3AED'},
+  sync:       {label:'Google Sheet Sync',  icon:'i-cloud',     color:'#059669'},
+  audit:      {label:'Audit Log',          icon:'i-clipboard', color:'#D97706'},
+  workspace:  {label:'Workspace',          icon:'i-grid',      color:'#0E9BA6'}
+};
+
+function loadNotifs(){ try{ return JSON.parse(localStorage.getItem(NOTIF_KEY)||'[]'); }catch(e){ return []; } }
+function saveNotifs(list){
+  try{
+    if(list.length>NOTIF_MAX) list=list.slice(0,NOTIF_MAX);   // newest-first, so trim the tail
+    localStorage.setItem(NOTIF_KEY, JSON.stringify(list));
+  }catch(e){}
+}
+function unreadCount(){ return loadNotifs().filter(n=>!n.read).length; }
+
+/**
+ * Raise a notification. opts:
+ *   level  'info' | 'error'   — drives the toast style
+ *   silent true               — record it, but skip the toast
+ */
+function notify(cat, title, desc, opts){
+  opts = opts||{};
+  const n = {
+    id:'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    ts:Date.now(),
+    cat:NOTIF_CATS[cat] ? cat : 'system',
+    title:title, desc:desc||'', read:false, level:opts.level||'info'
+  };
+  const list=loadNotifs();
+  list.unshift(n);
+  saveNotifs(list);
+
+  paintBell(true);                                            // badge count + pop animation
+  if(document.getElementById('nc_panel')) renderNotifPanel();  // live-refresh if open
+  if(document.getElementById('nl_table')) renderNotifPage();
+  if(!opts.silent && typeof toast==='function') toast(title, n.level==='error'?'error':'ok');
+  return n;
+}
+
+function markNotifRead(id){
+  const list=loadNotifs();
+  const n=list.find(x=>x.id===id);
+  if(n && !n.read){ n.read=true; saveNotifs(list); paintBell(false); renderNotifPanel(); }
+  if(document.getElementById('nl_table')) renderNotifPage();
+}
+function openNotif(id){ markNotifRead(id); }
+
+function markAllRead(){
+  const list=loadNotifs();
+  list.forEach(n=>{ n.read=true; });
+  saveNotifs(list);
+  paintBell(false); renderNotifPanel();
+  if(document.getElementById('nl_table')) renderNotifPage();
+}
+function deleteNotif(id){
+  saveNotifs(loadNotifs().filter(n=>n.id!==id));
+  paintBell(false); renderNotifPanel();
+  if(document.getElementById('nl_table')) renderNotifPage();
+}
+function clearAllNotifs(){
+  if(!loadNotifs().length) return;
+  if(!confirm('Clear all notifications? This cannot be undone.')) return;
+  saveNotifs([]);
+  paintBell(false); renderNotifPanel();
+  if(document.getElementById('nl_table')) renderNotifPage();
+}
+
+/* ---------- bell + badge ---------- */
+function paintBell(animate){
+  const b=document.getElementById('nc_badge');
+  const bell=document.getElementById('nc_bell');
+  if(!b) return;
+  const n=unreadCount();
+  if(n>0){
+    b.textContent = n>99 ? '99+' : String(n);
+    b.style.display='grid';
+    if(animate){
+      b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');   // restart animation
+      if(bell){ bell.classList.remove('ring'); void bell.offsetWidth; bell.classList.add('ring'); }
+    }
+  } else {
+    b.style.display='none';        // no unread -> badge hidden entirely
+  }
+}
+
+/* ---------- dropdown panel ---------- */
+function initNotifications(){
+  if(document.getElementById('nc_panel')) return;
+  const p=document.createElement('div');
+  p.id='nc_panel'; p.className='nc-panel';
+  p.setAttribute('role','dialog'); p.setAttribute('aria-label','Notifications');
+  p.innerHTML=`
+    <div class="nc-head">
+      <div class="nc-head-left">
+        <h3 class="nc-h3">Notifications</h3>
+        <span class="nc-unread" id="nc_unread">Unread (0)</span>
+      </div>
+      <div class="nc-head-actions">
+        <button class="nc-act" onclick="markAllRead()">Mark all as read</button>
+        <button class="nc-act nc-act-dgr" onclick="clearAllNotifs()">Clear all</button>
+      </div>
+    </div>
+    <div class="nc-list" id="nc_list"></div>
+    <div class="nc-foot">
+      <button class="nc-viewall" onclick="openAllNotifications()">View all notifications</button>
+    </div>`;
+  document.body.appendChild(p);
+  paintBell(false);
+}
+
+function toggleNotifPanel(e){
+  if(e) e.stopPropagation();
+  const p=document.getElementById('nc_panel'); if(!p) return;
+  if(p.classList.contains('open')) closeNotifPanel(); else openNotifPanel();
+}
+function openNotifPanel(){
+  const p=document.getElementById('nc_panel'); if(!p) return;
+  renderNotifPanel();
+  positionNotifPanel();
+  p.classList.add('open');
+  const b=document.getElementById('nc_bell'); if(b) b.setAttribute('aria-expanded','true');
+  setTimeout(()=>document.addEventListener('mousedown', outsideNotif), 0);
+  window.addEventListener('resize', positionNotifPanel);
+  window.addEventListener('scroll', positionNotifPanel, true);
+}
+function closeNotifPanel(){
+  const p=document.getElementById('nc_panel'); if(!p) return;
+  p.classList.remove('open');
+  const b=document.getElementById('nc_bell'); if(b) b.setAttribute('aria-expanded','false');
+  document.removeEventListener('mousedown', outsideNotif);
+  window.removeEventListener('resize', positionNotifPanel);
+  window.removeEventListener('scroll', positionNotifPanel, true);
+}
+function outsideNotif(e){
+  const p=document.getElementById('nc_panel'), b=document.getElementById('nc_bell');
+  if(p && !p.contains(e.target) && b && !b.contains(e.target)) closeNotifPanel();
+}
+/* anchored under the bell, clamped so it never runs off a narrow screen */
+function positionNotifPanel(){
+  const b=document.getElementById('nc_bell'), p=document.getElementById('nc_panel');
+  if(!b || !p) return;
+  const r=b.getBoundingClientRect();
+  const w=Math.min(380, window.innerWidth-20);
+  let left=r.right-w;
+  left=Math.max(10, Math.min(left, window.innerWidth-w-10));
+  p.style.width=w+'px';
+  p.style.left=left+'px';
+  p.style.top=(r.bottom+10)+'px';
+  p.style.maxHeight=Math.min(500, window.innerHeight-r.bottom-30)+'px';
+}
+
+function notifRowHTML(n){
+  const c=NOTIF_CATS[n.cat]||NOTIF_CATS.system;
+  return `<div class="nc-item ${n.read?'':'unread'}" onclick="openNotif('${n.id}')">
+    <span class="nc-ic" style="color:${c.color};background:color-mix(in srgb,${c.color} 12%,transparent)">
+      <svg class="ic ic-sm"><use href="#${c.icon}"/></svg></span>
+    <div class="nc-body">
+      <div class="nc-title">${esc(n.title)}</div>
+      ${n.desc?`<div class="nc-desc">${esc(n.desc)}</div>`:''}
+      <div class="nc-meta">
+        <span class="nc-cat">${esc(c.label)}</span>
+        <span class="nc-time">${relTime(new Date(n.ts).toISOString())}</span>
+      </div>
+    </div>
+    <div class="nc-side">
+      ${n.read?'':'<span class="nc-dot" title="Unread"></span>'}
+      <button class="nc-del" title="Delete" aria-label="Delete notification"
+              onclick="event.stopPropagation();deleteNotif('${n.id}')">
+        <svg class="ic ic-sm"><use href="#i-x"/></svg></button>
+    </div>
+  </div>`;
+}
+
+function renderNotifPanel(){
+  const list=loadNotifs();
+  const un=list.filter(n=>!n.read).length;
+  const head=document.getElementById('nc_unread');
+  if(head) head.textContent=`Unread (${un})`;
+  const body=document.getElementById('nc_list');
+  if(!body) return;
+  body.innerHTML = list.length
+    ? list.slice(0,20).map(notifRowHTML).join('')
+    : `<div class="nc-empty"><svg class="ic"><use href="#i-bell"/></svg>
+         You're all caught up.<br>New activity will appear here.</div>`;
+}
+
+/* ---------- View All page ----------
+   Built with the same toolbar/table/pager classes the Audit Logs module
+   already uses, so it inherits the existing look exactly rather than
+   introducing a second visual language for the same kind of screen. */
+let _notifPage = 1;
+
+function openAllNotifications(){
+  closeNotifPanel();
+  _notifPage=1;
+  pushModal({
+    title:'Notifications',
+    sub:'Every notification recorded on this device',
+    render:()=>`
+      <div class="audit-toolbar">
+        <div class="audit-search"><svg class="ic ic-sm"><use href="#i-search"/></svg>
+          <input id="nl_q" placeholder="Search title or description…" oninput="notifFilterChanged()"></div>
+        <select id="nl_cat" onchange="notifFilterChanged()"><option value="">All Categories</option>
+          ${Object.keys(NOTIF_CATS).map(k=>`<option value="${k}">${esc(NOTIF_CATS[k].label)}</option>`).join('')}</select>
+        <select id="nl_status" onchange="notifFilterChanged()"><option value="">Any Status</option>
+          <option value="unread">Unread</option><option value="read">Read</option></select>
+        <div class="audit-daterange">
+          <input id="nl_from" type="date" title="From" onchange="notifFilterChanged()">
+          <span>&ndash;</span>
+          <input id="nl_to" type="date" title="To" onchange="notifFilterChanged()">
+        </div>
+        <button class="lnk" onclick="notifClearFilters()">Clear filters</button>
+      </div>
+      <div class="audit-export-row">
+        <button onclick="markAllRead()"><svg class="ic ic-sm"><use href="#i-check-check"/></svg> Mark all as read</button>
+        <button onclick="clearAllNotifs()"><svg class="ic ic-sm"><use href="#i-trash"/></svg> Clear all</button>
+        <span id="nl_count" class="audit-count"></span>
+      </div>
+      <div id="nl_table" class="audit-table-wrap"></div>
+      <div id="nl_pager" class="audit-pager"></div>`,
+    after:()=>renderNotifPage()
+  });
+}
+function notifFilterChanged(){ _notifPage=1; renderNotifPage(); }
+function notifClearFilters(){
+  ['nl_q','nl_cat','nl_status','nl_from','nl_to'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  _notifPage=1; renderNotifPage();
+}
+
+function notifFilteredList(){
+  const q=(document.getElementById('nl_q')?.value||'').toLowerCase();
+  const cf=document.getElementById('nl_cat')?.value||'';
+  const sf=document.getElementById('nl_status')?.value||'';
+  const from=document.getElementById('nl_from')?.value||'';
+  const to=document.getElementById('nl_to')?.value||'';
+  let list=loadNotifs().slice().sort((a,b)=>b.ts-a.ts);
+  if(q)  list=list.filter(n=>(n.title+' '+n.desc).toLowerCase().includes(q));
+  if(cf) list=list.filter(n=>n.cat===cf);
+  if(sf) list=list.filter(n=> sf==='unread' ? !n.read : !!n.read);
+  if(from) list=list.filter(n=>n.ts >= new Date(from+'T00:00:00').getTime());
+  if(to)   list=list.filter(n=>n.ts <= new Date(to+'T23:59:59').getTime());
+  return list;
+}
+
+function renderNotifPage(){
+  const wrap=document.getElementById('nl_table'); if(!wrap) return;
+  const all=notifFilteredList();
+  const totalPages=Math.max(1, Math.ceil(all.length/NOTIF_PAGE_SIZE));
+  if(_notifPage>totalPages) _notifPage=totalPages;
+  const start=(_notifPage-1)*NOTIF_PAGE_SIZE;
+  const page=all.slice(start, start+NOTIF_PAGE_SIZE);
+
+  const countEl=document.getElementById('nl_count');
+  if(countEl) countEl.textContent = all.length
+    ? `${start+1}–${Math.min(start+NOTIF_PAGE_SIZE, all.length)} of ${all.length}`
+    : '0 notifications';
+
+  wrap.innerHTML = all.length ? `<table class="audit-table"><thead><tr>
+      <th>Category</th><th>Title</th><th>Description</th><th>Time</th><th>Status</th><th></th>
+    </tr></thead><tbody>
+    ${page.map(n=>{
+      const c=NOTIF_CATS[n.cat]||NOTIF_CATS.system;
+      return `<tr>
+        <td><span class="nc-cat" style="color:${c.color}">${esc(c.label)}</span></td>
+        <td><b>${esc(n.title)}</b></td>
+        <td style="color:var(--mut);max-width:320px;white-space:normal">${esc(n.desc)||'—'}</td>
+        <td style="color:var(--mut);white-space:nowrap">${fmtStamp(new Date(n.ts).toISOString())}</td>
+        <td><span class="pill ${n.read?'nc-badge-read':'nc-badge-unread'}">${n.read?'Read':'Unread'}</span></td>
+        <td style="white-space:nowrap">
+          ${n.read?'':`<button class="lnk" onclick="markNotifRead('${n.id}')">Mark read</button>`}
+          <button class="lnk dgr" onclick="deleteNotif('${n.id}')">Delete</button></td>
+      </tr>`;
+    }).join('')}
+    </tbody></table>` : '<div class="empty">No matching notifications.</div>';
+
+  const pager=document.getElementById('nl_pager'); if(!pager) return;
+  if(all.length<=NOTIF_PAGE_SIZE){ pager.innerHTML=''; return; }
+  pager.innerHTML=`
+    <button class="pg-btn" ${_notifPage<=1?'disabled':''} onclick="notifGoPage(${_notifPage-1})"><svg class="ic ic-sm"><use href="#i-chevron-left"/></svg></button>
+    <span class="pg-info">Page ${_notifPage} of ${totalPages}</span>
+    <button class="pg-btn" ${_notifPage>=totalPages?'disabled':''} onclick="notifGoPage(${_notifPage+1})"><svg class="ic ic-sm"><use href="#i-chevron-right"/></svg></button>`;
+}
+function notifGoPage(p){ _notifPage=p; renderNotifPage(); }
+
+/* ---------- event sources ----------
+   logAudit() is already called at nearly every event worth notifying about,
+   so notifications hang off it centrally rather than scattering notify()
+   calls through the app. That also guarantees the notification list and the
+   audit trail can never drift apart. Events with no audit entry (department
+   created, sign-up) call notify() directly at their own site. */
+const NOTIF_FROM_AUDIT = {
+  'Login': e => e.status==='Failed'
+      ? {cat:'security', title:'Failed Login', level:'error',
+         desc:`Sign-in attempt for “${e.user}” failed — ${e.newValue||'incorrect details'}.`}
+      : {cat:'security', title:'Login Alert', desc:`${e.user} signed in from ${e.browser}.`},
+  'Logout':          e=>({cat:'security', title:'Signed Out', desc:`${e.user} signed out.`, silent:true}),
+  'Google Sign-In':  e=>({cat:'security', title:'Google Workspace Login', desc:`${e.user} signed in with Google.`}),
+  'Password Reset':  e=>({cat:'security', title:'Password Reset', desc:`The password for ${e.user} was changed.`}),
+  'Automation Created': e=>({cat:'automation', title:'Automation Created', desc:`${e.newValue} has been added.`}),
+  'Automation Updated': e=>({cat:'automation', title:'Automation Updated', desc:e.newValue, silent:true}),
+  'Automation Deleted': e=>({cat:'automation', title:'Automation Archived',
+                             desc:`${e.oldValue} was archived and hidden from the report.`}),
+  'User Created':    e=>({cat:'user', title:'New User Registered', desc:`${e.user} created an account.`}),
+  'User Updated':    e=>({cat:'user', title:'User Updated', desc:`${e.user} — ${e.newValue}`}),
+  'Department Changed': e=>({cat:'workspace', title:'Department Changed',
+                             desc:`${e.user} moved to ${e.newValue}.`}),
+  'Settings Changed':e=>({cat:'system', title:'Settings Changed', desc:e.newValue}),
+  'Exported Report': e=>({cat:/Audit Log/i.test(e.newValue||'') ? 'audit' : 'system',
+                          title:'Report Exported', desc:`${e.newValue} is ready.`}),
+  'Backup':          e=>{
+      const toSheet=/Sheet/i.test(e.newValue||'');
+      if(e.status==='Failed') return {cat:toSheet?'sync':'backup', level:'error',
+        title:toSheet?'Sheet Sync Failed':'Backup Failed', desc:e.newValue};
+      return {cat:toSheet?'sync':'backup',
+        title:toSheet?'Google Sheet Synced':'Backup Completed',
+        desc:toSheet?'Your data was saved to the Google Sheet.':'Backup file downloaded successfully.',
+        silent:toSheet};   // sync runs often; the header pill already reports it
+    },
+  'Restore':         e=>e.status==='Failed'
+      ? {cat:'backup', title:'Restore Failed', desc:e.newValue, level:'error'}
+      : {cat:'backup', title:'Restore Completed', desc:e.newValue}
+};
+function notifyFromAudit(e){
+  const build=NOTIF_FROM_AUDIT[e.action];
+  if(!build) return;
+  const n=build(e);
+  if(n) notify(n.cat, n.title, n.desc, {level:n.level, silent:n.silent});
+}
+
+/* demo helper — populates the panel with the sample items from the spec so the
+   UI can be shown off. Deliberately NOT run automatically: a live dashboard
+   should never invent activity that did not happen. */
+function seedDemoNotifications(){
+  const min=60000, hr=60*min;
+  [ ['automation','Automation Created','Claude License Purchase has been added.',2*min],
+    ['user','New User Registered','Rahim Ahmed created an account.',15*min],
+    ['system','Monthly Report Generated','Your analytics report is ready.',hr],
+    ['backup','Backup Completed','Database backup completed successfully.',5*hr],
+    ['security','Login Alert','Super Admin signed in from Chrome.',7*hr],
+    ['security','Failed Login','Three failed login attempts detected.',28*hr]
+  ].forEach(([cat,title,desc,ago])=>{
+    const list=loadNotifs();
+    list.push({id:'n'+Math.random().toString(36).slice(2,10), ts:Date.now()-ago,
+      cat, title, desc, read:false, level:'info'});
+    list.sort((a,b)=>b.ts-a.ts);
+    saveNotifs(list);
+  });
+  paintBell(true); renderNotifPanel();
+  console.log('Seeded 6 demo notifications. Use clearAllNotifs() to remove them.');
+}
+
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape' && document.getElementById('nc_panel')?.classList.contains('open')) closeNotifPanel();
+});
+
 /* ================= GOOGLE SHEET SYNC ================= */
 const API = "https://script.google.com/macros/s/AKfycbweQTNzZSqVhxcRgdMfGq-CV7fVHGz4Dp2kMuaZvHEyGFtYkU6sdPyyO-yNCl246zis/exec";
 let dirty = false, lastSync = null;
@@ -4593,6 +5074,7 @@ function setSync(msg, color){
 
 async function cloudLoad(manual){
   setSync('Loading from Google Sheet…');
+  const prevIds = new Set(data.filter(r=>r && r.task && r.id).map(r=>r.id));
   try{
     const res = await fetch(API + '?t=' + Date.now());
     const j = await res.json();
@@ -4635,6 +5117,21 @@ async function cloudLoad(manual){
         id:r.id||newId(), archived:r.archived===true,
         ownerId:r.ownerId!=null?String(r.ownerId):'',
         }));
+      // Someone else's work arriving on the 60s poll — the closest thing to a
+      // pushed notification without a backend channel. Skipped on the very
+      // first load, when every row is legitimately "new" to this tab.
+      if(prevIds.size){
+        const mine=(currentUser&&currentUser.name)||'';
+        const fresh=data.filter(r=>r.task && r.id && !prevIds.has(r.id)
+                                && r.createdBy && r.createdBy!==mine);
+        if(fresh.length===1){
+          notify('automation','Automation Created',
+            `${fresh[0].task} was added by ${fresh[0].createdBy}.`);
+        } else if(fresh.length>1){
+          notify('automation','New Automations Added',
+            `${fresh.length} automations were added by other users.`);
+        }
+      }
       dirty = false;
     } else {
       // Sheet is empty. Only an admin/editor can populate it — if the current
@@ -4693,6 +5190,7 @@ drawDevs();
 asvWireForm();
 asvRestoreDraft();
 checkResetTokenInUrl();   // if this page was opened from an emailed reset link
+initNotifications();      // builds the dropdown panel and paints the bell badge
 showSkeletons();                 // show shimmer placeholders immediately
 cloudLoad().finally(()=>{ render(); });   // real content replaces skeletons when the load settles
 refreshUsersFromSheet();   // load cross-device accounts into the cache on startup

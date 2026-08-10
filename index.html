@@ -4369,6 +4369,22 @@ function hasTime(r){
   return r.manTime!=='' && r.manTime!=null && r.autoTime!=='' && r.autoTime!=null;
 }
 
+/* Is this record an actual automated process?
+   This used to be hasTime(), which only asked whether BOTH work-time fields
+   happened to be filled in. That is a data-completeness test, not a
+   classification: an automation entered before work-time capture existed —
+   with its saved hours typed in directly — is every bit as real, and was
+   being left out of the count.
+   A record counts when there is genuine evidence it automates something:
+   it saves time, it names the manual process it replaced, or it lists the
+   process steps that were automated. A blank Planned placeholder does not. */
+function isProcessAutomation(r){
+  if(hoursSavedPerMonth(r) > 0) return true;
+  if(String(r.manual || '').trim()) return true;
+  if((r.keyProcessAutomation || []).length) return true;
+  return false;
+}
+
 /* ================= CENTRALISED KPI CALCULATION =================
    One source of truth for every derived number, so the Dashboard, the
    Analytics tab, the KPI drill-downs and any report can never disagree.
@@ -4423,7 +4439,7 @@ function computeKPIs(rows){
     if(r.prio==='High')     out.high++;
     if(r.prio==='Critical') out.critical++;
 
-    if(hasTime(r)) out.processAutomation++;
+    if(isProcessAutomation(r)) out.processAutomation++;
 
     const h = hoursSavedPerMonth(r);
     out.hours += h;
@@ -4465,38 +4481,45 @@ function kpiRecords(){
 /* comparison table inside the Process Automation modal */
 function paintProcess(){
   const q=(p_q.value||'').toLowerCase(), dp=p_dp.value, sort=p_sort.value;
-  let rs=tasks().filter(hasTime)
+  let rs=tasks().filter(isProcessAutomation)
     .filter(r=>(!dp||r.dept===dp)&&(!q||((r.task||'')+(r.dept||'')+(r.manual||'')).toLowerCase().includes(q)))
     .map(r=>{
-      const mh=toHrs(r.manTime,r.manUnit), ah=toHrs(r.autoTime,r.autoUnit);
-      const per=mh-ah, monthly=per*(r.runs||0);
-      return {r, mh, ah, per, monthly, pct: mh? Math.round(per/mh*100):0};
+      // before/after is only known when both work times were recorded;
+      // the monthly saving is always known, via the central calculation
+      const known = hasTime(r);
+      const mh = known ? toHrs(r.manTime,r.manUnit) : null;
+      const ah = known ? toHrs(r.autoTime,r.autoUnit) : null;
+      const per = known ? mh-ah : null;
+      const monthly = hoursSavedPerMonth(r);
+      return {r, known, mh, ah, per, monthly, pct: (known && mh) ? Math.round(per/mh*100) : null};
     });
 
   rs.sort((a,b)=> sort==='name' ? a.r.task.localeCompare(b.r.task)
-                : sort==='pct'  ? b.pct-a.pct
+                : sort==='pct'  ? (b.pct??-1)-(a.pct??-1)
                 : b.monthly-a.monthly);
 
   const mins = h => `${Math.round(h*60)} min`;
+  const unknown = '<span style="color:var(--mut2)">—</span>';
   p_out.innerHTML = mTable(
     ['Automation Name','Department','Before (Manual)','After (Automated)','Saved / Run','Runs / Month','Saved / Month','Reduction','Status'],
     rs.map(x=>{
-      const neg = x.per<=0;
+      const neg = x.known && x.per<=0;
       return {cells:[
         `<b>${esc(x.r.task)}</b>${x.r.manual?`<div style="color:var(--mut);font-size:11px;margin-top:2px">${esc(x.r.manual)}</div>`:''}`,
         esc(x.r.dept),
-        `<span style="color:var(--danger)">${mins(x.mh)}</span>`,
-        `<span style="color:var(--warn)">${mins(x.ah)}</span>`,
-        neg?'<span style="color:var(--danger)">—</span>':`<b style="color:var(--ok)">${mins(x.per)}</b>`,
+        x.known?`<span style="color:var(--danger)">${mins(x.mh)}</span>`:unknown,
+        x.known?`<span style="color:var(--warn)">${mins(x.ah)}</span>`:unknown,
+        !x.known?unknown:(neg?'<span style="color:var(--danger)">—</span>':`<b style="color:var(--ok)">${mins(x.per)}</b>`),
         x.r.runs||0,
-        neg?'<span style="color:var(--danger)">0 hrs</span>':`<b>${Math.round(x.monthly*100)/100} hrs</b>`,
-        neg?'<span class="pill p-High">No saving</span>'
-           :`<div class="bar"><span style="width:${Math.max(x.pct,3)}%"></span></div>
-             <span style="font-size:11px;color:var(--mut)">${x.pct}%</span>`,
+        x.monthly>0?`<b>${Math.round(x.monthly*100)/100} hrs</b>`:'<span style="color:var(--danger)">0 hrs</span>',
+        x.pct==null?unknown
+          :(neg?'<span class="pill p-High">No saving</span>'
+               :`<div class="bar"><span style="width:${Math.max(x.pct,3)}%"></span></div>
+                 <span style="font-size:11px;color:var(--mut)">${x.pct}%</span>`),
         pillS(x.r)
       ]};
     }),
-    {empty:'No automations have work-time data recorded yet. Add Automation Work Time and Manual Process Work Time when creating a task.'});
+    {empty:'No process automations recorded yet.'});
 }
 
 /* generic table builder */
@@ -4803,25 +4826,28 @@ const KPI_VIEWS = {
 
   /* ---- PROCESS AUTOMATION (before vs after) ---- */
   process: ()=>{
-    const rs = tasks().filter(hasTime);
-    const totalBefore = rs.reduce((a,r)=>a+toHrs(r.manTime,r.manUnit)*(r.runs||0),0);
-    const totalAfter  = rs.reduce((a,r)=>a+toHrs(r.autoTime,r.autoUnit)*(r.runs||0),0);
-    const saved = totalBefore-totalAfter;
-    const pct = totalBefore ? Math.round(saved/totalBefore*100) : 0;
+    const rs = tasks().filter(isProcessAutomation);
+    const timed = rs.filter(hasTime);   // only these have a before/after split
+    const totalBefore = timed.reduce((a,r)=>a+toHrs(r.manTime,r.manUnit)*(r.runs||0),0);
+    const totalAfter  = timed.reduce((a,r)=>a+toHrs(r.autoTime,r.autoUnit)*(r.runs||0),0);
+    const saved = hoursOf(rs);          // full saving across every process automation
+    const pct = totalBefore ? Math.round((totalBefore-totalAfter)/totalBefore*100) : 0;
     const r1 = Math.round;
 
     return {
       title:`Process Automation (${rs.length})`,
-      sub:'Manual effort before automation vs after — per execution and per month',
+      sub:`${rs.length} automated process${rs.length===1?'':'es'} · ${timed.length} with a recorded before/after work time`,
       render:()=>`
         <div class="mgrid" style="grid-template-columns:repeat(3,1fr)">
           <div class="mbox"><h4>Manual Effort (Before)</h4>
-            <div class="bigstat" style="color:var(--danger)">${r1(totalBefore*10)/10}<span>hrs/month</span></div></div>
+            <div class="bigstat" style="color:var(--danger)">${r1(totalBefore*10)/10}<span>hrs/month</span></div>
+            <div style="color:var(--mut2);font-size:11.5px;margin-top:6px">from the ${timed.length} with work times recorded</div></div>
           <div class="mbox"><h4>Automated Effort (After)</h4>
-            <div class="bigstat" style="color:var(--warn)">${r1(totalAfter*10)/10}<span>hrs/month</span></div></div>
+            <div class="bigstat" style="color:var(--warn)">${r1(totalAfter*10)/10}<span>hrs/month</span></div>
+            <div style="color:var(--mut2);font-size:11.5px;margin-top:6px">${pct}% less than before</div></div>
           <div class="mbox"><h4>Net Time Saved</h4>
             <div class="bigstat" style="color:var(--ok)">${r1(saved*10)/10}<span>hrs/month</span></div>
-            <div style="color:var(--mut);font-size:12px;margin-top:6px">${pct}% reduction · ${workDays(saved)}</div></div>
+            <div style="color:var(--mut);font-size:12px;margin-top:6px">across all ${rs.length} · ${workDays(saved)}</div></div>
         </div>
         <div class="mfilters">
           <input id="p_q" placeholder="Search automation, department…" oninput="paintProcess()">

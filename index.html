@@ -640,6 +640,10 @@ body.viewer td.ed:hover{background:var(--panel2)!important;box-shadow:none}
 .rep-label::before{content:'';width:3px;height:13px;border-radius:2px;
   background:linear-gradient(180deg,var(--dbl-green),var(--dbl-blue))}
 .rowdates{font-size:10.5px;color:var(--mut2);margin-top:3px;font-weight:400;line-height:1.4}
+/* Reason for High Priority: text wraps naturally instead of forcing the
+   table wider. Same cell styling as every other column. */
+.reason-cell{min-width:180px;max-width:260px;white-space:normal;
+  word-break:break-word;color:var(--txt2);line-height:1.5}
 .cell-bul{margin:0;padding-left:15px;list-style:disc}
 .cell-bul li{font-size:11.5px;color:var(--txt2);line-height:1.5;margin:1px 0}
 .cell-bul-check{list-style:none;padding-left:2px}
@@ -1898,15 +1902,14 @@ function drawWelcome(withTask){
   const greet = h<12 ? 'Good Morning' : h<17 ? 'Good Afternoon' : 'Good Evening';
   const firstName = String(currentUser.name||currentUser.user||'').trim().split(/\s+/)[0] || 'there';
 
-  const active  = withTask.filter(r=>r.status==='Live' || r.status==='In Progress').length;
-  const hours   = withTask.reduce((a,r)=>a+(Number(r.hours)||0),0);
-  const pending = withTask.filter(r=>r.status==='Planned' || r.status==='On Hold').length;
-  // monthly cost savings — sum, using the most common currency present (default BDT)
-  let savings=0, curCount={};
-  withTask.forEach(r=>{
-    const v=Number(r.monthlyCostSaved); if(isFinite(v)&&v>0){ savings+=v; const c=r.currency||'BDT'; curCount[c]=(curCount[c]||0)+1; }
-  });
-  const cur = Object.keys(curCount).sort((a,b)=>curCount[b]-curCount[a])[0] || 'BDT';
+  // same calculator as the KPI strip, so the welcome card can never disagree
+  const WK      = computeKPIs(withTask);
+  const active  = WK.live + WK.inProgress;
+  const hours   = WK.hours;
+  const pending = WK.planned + WK.onHold;
+  const curs    = Object.keys(WK.money).sort((a,b)=>WK.money[b]-WK.money[a]);
+  const cur     = curs[0] || 'BDT';
+  const savings = WK.money[cur] || 0;
 
   const fmtHours = hours>0 ? (Math.round(hours*10)/10).toLocaleString('en-IN') : '0';
   const fmtSave  = savings>0 ? fmtMoney(savings,cur) : (CUR_SYM[cur]||'')+'0.00';
@@ -1992,30 +1995,36 @@ function showSkeletons(){
 function render(){
   fillSelects();
   const depts=Object.keys(roster);
-  const withTask=visibleData().filter(r=>r.task && !r.archived);
-  const live=withTask.filter(r=>r.status==='Live').length;
-  const hrs=withTask.filter(r=>r.status==='Live').reduce((a,r)=>a+(r.hours||0),0);
+  const withTask=kpiRecords();
+  // every derived number comes from the one calculator, so the dashboard,
+  // analytics and drill-downs can never disagree
+  const K=computeKPIs(withTask);
+  const live=K.live;
+  // Hours saved counts EVERY automation that saves time, not only those with
+  // status "Live". The old filter meant a register full of Successful and
+  // Completed automations reported 0 hours saved.
+  const hrs=K.hours;
 
   drawWelcome(withTask);
 
   kpis.innerHTML=`
-    <div class="kpi" onclick="openKPI('total')" style="--accent:var(--acc)"><span class="kpi-ic"><svg class="ic ic-lg"><use href="#i-grid"/></svg></span><b>${withTask.length}</b><small>Total Automations</small></div>
-    <div class="kpi" onclick="openKPI('progress')" style="--accent:var(--warn)"><span class="kpi-ic"><svg class="ic ic-lg"><use href="#i-clock"/></svg></span><b style="color:var(--warn)">${withTask.filter(r=>r.status==='In Progress').length}</b><small>In Progress</small></div>
-    <div class="kpi" onclick="openKPI('high')" style="--accent:var(--danger)"><span class="kpi-ic"><svg class="ic ic-lg"><use href="#i-alert"/></svg></span><b style="color:var(--danger)">${withTask.filter(r=>r.prio==='High').length}</b><small>High Priority</small></div>
+    <div class="kpi" onclick="openKPI('total')" style="--accent:var(--acc)"><span class="kpi-ic"><svg class="ic ic-lg"><use href="#i-grid"/></svg></span><b>${K.total}</b><small>Total Automations</small></div>
+    <div class="kpi" onclick="openKPI('progress')" style="--accent:var(--warn)"><span class="kpi-ic"><svg class="ic ic-lg"><use href="#i-clock"/></svg></span><b style="color:var(--warn)">${K.inProgress}</b><small>In Progress</small></div>
+    <div class="kpi" onclick="openKPI('high')" style="--accent:var(--danger)"><span class="kpi-ic"><svg class="ic ic-lg"><use href="#i-alert"/></svg></span><b style="color:var(--danger)">${K.high}</b><small>High Priority</small></div>
     <div class="kpi" onclick="openKPI('depts')" style="--accent:#0EA5E9"><span class="kpi-ic"><svg class="ic ic-lg"><use href="#i-inbox"/></svg></span><b style="color:var(--info)">${depts.length}</b><small>Departments</small></div>
     <div class="kpi" onclick="openKPI('users')" style="--accent:#0EA5E9"><span class="kpi-ic"><svg class="ic ic-lg"><use href="#i-users"/></svg></span><b style="color:var(--info)">${allUsers().length}</b><small>Users</small></div>
     <div class="kpi" onclick="openKPI('hours')" style="--accent:var(--ok)"><span class="kpi-ic"><svg class="ic ic-lg"><use href="#i-trend"/></svg></span><b style="color:var(--ok)">${hrs.toLocaleString()}</b><small>Hrs Saved / Month</small><em class="kdays">${workDays(hrs)}</em></div>
-    <div class="kpi" onclick="openKPI('process')" style="--accent:var(--hold)"><span class="kpi-ic"><svg class="ic ic-lg"><use href="#i-activity"/></svg></span><b style="color:var(--hold)">${withTask.filter(r=>hasTime(r)).length}</b><small>Process Automation</small></div>
-    <div class="kpi" onclick="openKPI('successful')" style="--accent:#4E7A22"><span class="kpi-ic"><svg class="ic ic-lg"><use href="#i-check"/></svg></span><b style="color:#4E7A22">${withTask.filter(r=>r.status==='Successful').length}</b><small>Successful</small></div>
-    <div class="kpi" onclick="openKPI('keyachievements')" style="--accent:#B45309"><span class="kpi-ic"><svg class="ic ic-lg"><use href="#i-check"/></svg></span><b style="color:#B45309">${withTask.reduce((n,r)=>n+((r.keyAchievement||[]).length),0)}</b><small>🏆 Key Achievements</small></div>
-    <div class="kpi" onclick="openKPI('onhold')" style="--accent:var(--hold)"><span class="kpi-ic"><svg class="ic ic-lg"><use href="#i-clock"/></svg></span><b style="color:var(--hold)">${withTask.filter(r=>r.status==='On Hold').length}</b><small>On Hold</small></div>
+    <div class="kpi" onclick="openKPI('process')" style="--accent:var(--hold)"><span class="kpi-ic"><svg class="ic ic-lg"><use href="#i-activity"/></svg></span><b style="color:var(--hold)">${K.processAutomation}</b><small>Process Automation</small></div>
+    <div class="kpi" onclick="openKPI('successful')" style="--accent:#4E7A22"><span class="kpi-ic"><svg class="ic ic-lg"><use href="#i-check"/></svg></span><b style="color:#4E7A22">${K.successful}</b><small>Successful</small></div>
+    <div class="kpi" onclick="openKPI('keyachievements')" style="--accent:#B45309"><span class="kpi-ic"><svg class="ic ic-lg"><use href="#i-check"/></svg></span><b style="color:#B45309">${K.achievements}</b><small>🏆 Key Achievements</small></div>
+    <div class="kpi" onclick="openKPI('onhold')" style="--accent:var(--hold)"><span class="kpi-ic"><svg class="ic ic-lg"><use href="#i-clock"/></svg></span><b style="color:var(--hold)">${K.onHold}</b><small>On Hold</small></div>
     <div class="kpi" onclick="openKPI('money')" style="--accent:var(--dbl-green)"><span class="kpi-ic"><svg class="ic ic-lg"><use href="#i-trend"/></svg></span><b class="${kpiFontClass(moneyCard())}" style="color:#4E7A22">${moneyCard()}</b><small>💰 Money Saved / Month</small><em class="kdays">${moneyCardSub()}</em></div>`;
 
   /* register table */
   const rows=filtered();
   tbl.innerHTML = rows.length ? `<table><thead>
     <tr><th>Department</th><th>Automation Task</th><th>Manual Process</th><th>Assigned Users</th>
-    <th>Developer</th><th>Status</th><th>Priority</th><th>Tool</th><th>Hrs/Mo</th><th>Saved/Mo</th><th>Start</th><th>Notes</th><th>Key Objective</th><th>Key Achievement</th><th>Key Process Automation</th><th>Report</th><th class="adm"></th></tr></thead><tbody>
+    <th>Developer</th><th>Status</th><th>Priority</th><th>Reason for High Priority</th><th>Tool</th><th>Hrs/Mo</th><th>Saved/Mo</th><th>Start</th><th>Notes</th><th>Key Objective</th><th>Key Achievement</th><th>Key Process Automation</th><th>Report</th><th class="adm"></th></tr></thead><tbody>
     ${rows.map(({r,i})=>`<tr data-row="${i}" class="${ownsRow(r)?'':'row-readonly'}">
       <td class="ed" data-f="dept" onclick="edit(${i},'dept',this)"><b>${esc(r.dept)}</b></td>
       <td class="ed" data-f="task" onclick="edit(${i},'task',this)">${esc(r.task)||'<i style="color:var(--mut)">— not defined —</i>'}</td>
@@ -2024,8 +2033,9 @@ function render(){
       <td class="ed" data-f="developer" style="min-width:140px" onclick="edit(${i},'developer',this)">${(r.developer||[]).map(o=>`<span class="tag">${esc(o)}</span>`).join('')||'<span style="color:var(--mut2)">— Not Assigned —</span>'}</td>
       <td class="ed" data-f="status" onclick="edit(${i},'status',this)"><span class="pill s-${r.status.replace(/\s/g,'')}">${r.status}</span></td>
       <td class="ed" data-f="prio" onclick="edit(${i},'prio',this)"><span class="pill p-${r.prio}">${r.prio}</span></td>
+      <td class="ed reason-cell" data-f="reason" onclick="edit(${i},'reason',this)">${reasonCell(r)}</td>
       <td class="ed" data-f="tool" onclick="edit(${i},'tool',this)">${esc(r.tool)}</td>
-      <td class="ed" data-f="hours" onclick="edit(${i},'hours',this)">${r.hours||0}</td>
+      <td class="ed" data-f="hours" onclick="edit(${i},'hours',this)">${Math.round(hoursSavedPerMonth(r)*100)/100}</td>
       <td class="ed" data-f="monthlyCostSaved" onclick="edit(${i},'monthlyCostSaved',this)">${r.monthlyCostSaved!==''&&r.monthlyCostSaved!=null
             ? `<b style="color:#4E7A22">${fmtMoney(r.monthlyCostSaved,r.currency||'BDT')}</b>` : '—'}</td>
       <td class="ed" data-f="date" onclick="edit(${i},'date',this)">${fmtDateCell(r.date)}</td>
@@ -2116,6 +2126,7 @@ function render(){
             ${efield('Currency', 'currency', esc(r.currency||'BDT'))}
             ${efield('Status', 'status', `<span class="pill s-${r.status.replace(/\s/g,'')}">${r.status}</span>`)}
             ${efield('Priority', 'prio', `<span class="pill p-${r.prio}">${r.prio}</span>`)}
+            ${efield('Reason for High Priority', 'reason', esc(reasonText(r))||'—')}
             ${efield('Hours Saved / Month', 'hours', (r.hours||0)+' hrs')}
             ${efield('Start Date', 'date', fmtDateCell(r.date))}
             ${efield('Assigned Users', 'owners', tags(r.owners))}
@@ -3773,6 +3784,11 @@ function edit(i, field, td){
     case 'date':  html=`<input class="cell-ed" type="date" value="${esc(dateVal(r.date))}">`; break;
     case 'manual':
     case 'notes': html=`<textarea class="cell-ed" rows="3">${esc(r[field]||'')}</textarea>`; break;
+    case 'reason':
+      // seeded with whatever is shown today (Notes, when no reason is set yet)
+      // so editing refines the existing text rather than starting from blank
+      html=`<textarea class="cell-ed" rows="3" placeholder="Why is this high priority?">${esc(reasonText(r))}</textarea>`
+         + `<div class="ed-hint">Shown in the register and the High Priority report</div>`; break;
     case 'keyObjective': html=`<textarea class="cell-ed" rows="4" placeholder="Main business objective">${esc(r.keyObjective||'')}</textarea>`; break;
     case 'keyAchievement':
     case 'keyProcessAutomation':
@@ -3971,15 +3987,11 @@ const CUR_SYM = {USD:'$',BDT:'৳',EUR:'€',GBP:'£',INR:'₹',AED:'AED '};
 const fmtMoney = (n,c)=> (CUR_SYM[c]||'') + (Number(n)||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
 
 /* total monthly cost saved across all tasks (by currency) */
+/* Money totals come from the same centralised calculator as every other KPI,
+   so they respect workspace scope and skip archived rows — the old version
+   walked `data` directly and counted rows the rest of the dashboard hid. */
 function moneyByCurrency(){
-  const by={};
-  data.forEach(r=>{
-    if(r.task && r.monthlyCostSaved!=='' && r.monthlyCostSaved!=null){
-      const c=r.currency||'BDT';
-      by[c]=(by[c]||0)+(Number(r.monthlyCostSaved)||0);
-    }
-  });
-  return by;
+  return computeKPIs().money;
 }
 /* card value: dominant currency total, or 0 */
 function moneyCard(){
@@ -4182,7 +4194,7 @@ function drawAnalytics(){
   rows.forEach(r=>{
     const k=rowMonth(r); const idx=k!=null?monthIndex[k]:undefined;
     if(idx!==undefined){
-      hoursByMonth[idx]+=Number(r.hours)||0;
+      hoursByMonth[idx]+=hoursSavedPerMonth(r);   // centralised calculation
       costByMonth[idx]+=Number(r.monthlyCostSaved)||0;
       createdByMonth[idx]+=1;
       execByMonth[idx]+=Number(r.runs)||0;
@@ -4220,7 +4232,7 @@ function drawAnalytics(){
     options:{cutout:'62%',plugins:{...legendBottom,tooltip:{callbacks:{label:c=>` ${c.label}: ${c.parsed}`}}}}});
 
   /* 4) Top Departments by Hours Saved — horizontal bar */
-  const deptHours={}; rows.forEach(r=>{ deptHours[r.dept]=(deptHours[r.dept]||0)+(Number(r.hours)||0); });
+  const deptHours={}; rows.forEach(r=>{ deptHours[r.dept]=(deptHours[r.dept]||0)+hoursSavedPerMonth(r); });
   const topDept=Object.keys(deptHours).map(d=>({d,h:deptHours[d]})).filter(x=>x.h>0).sort((a,b)=>b.h-a.h).slice(0,8);
   mk('a_depthours',{type:'bar',
     data:{labels:topDept.map(x=>x.d),datasets:[{data:topDept.map(x=>x.h),backgroundColor:PAL.teal,borderRadius:4,barThickness:14}]},
@@ -4314,15 +4326,22 @@ function importJSON(e){
 }
 function exportCSV(){
   if(!can('export')) return denied();
-  const h=['Department','Automation Task','Automation Work Time','Manual Process','Manual Process Work Time','Executions/Month','Assigned Users','Developer','Key Objective','Key Achievement','Key Process Automation','Status','Priority','Tool','Hours/Month','Manual Cost','Automation Cost','Cost Saved/Execution','Monthly Cost Saved','Currency','Created By','Created Date','Last Updated','Start Date','Notes'];
-  const csv=[h.join(',')].concat(data.map(r=>[r.dept,r.task,
+  const h=['Department','Automation Task','Automation Work Time','Manual Process','Manual Process Work Time','Executions/Month','Assigned Users','Developer','Key Objective','Key Achievement','Key Process Automation','Status','Priority','Reason for High Priority','Tool','Hours/Month','Manual Cost','Automation Cost','Cost Saved/Execution','Monthly Cost Saved','Currency','Created By','Created Date','Last Updated','Start Date','Notes'];
+  // one value per header, in the same order — the previous version omitted
+  // Key Objective / Key Achievement / Key Process Automation entirely, which
+  // shifted every later column left by three in the exported file
+  const csv=[h.join(',')].concat(data.map(r=>[
+    r.dept, r.task,
     r.autoTime!==''&&r.autoTime!=null?fmtT(r.autoTime,r.autoUnit):'',
     r.manual,
     r.manTime!==''&&r.manTime!=null?fmtT(r.manTime,r.manUnit):'',
-    r.runs||0,(r.owners||[]).join('; '),(r.developer||[]).join('; '),r.status,r.prio,r.tool,r.hours,
-    r.manualProcessCost,r.automationProcessCost,r.costSavedPerExecution,r.monthlyCostSaved,r.currency||'',
-    r.createdBy||'',fmtStamp(r.createdAt),fmtStamp(r.updatedAt),
-    r.date,r.notes]
+    r.runs||0, (r.owners||[]).join('; '), (r.developer||[]).join('; '),
+    r.keyObjective||'', (r.keyAchievement||[]).join('; '), (r.keyProcessAutomation||[]).join('; '),
+    r.status, r.prio, reasonText(r), r.tool,
+    Math.round(hoursSavedPerMonth(r)*100)/100,
+    r.manualProcessCost, r.automationProcessCost, r.costSavedPerExecution, r.monthlyCostSaved, r.currency||'',
+    r.createdBy||'', fmtStamp(r.createdAt), fmtStamp(r.updatedAt),
+    r.date, r.notes]
     .map(v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`).join(','))).join('\n');
   dl(new Blob(['\ufeff'+csv],{type:'text/csv'}),'dbl_ai_automation_register.csv');
   logAudit('Exported Report', {oldValue:'', newValue:'Automation Register (.csv)', module:'Reports'});
@@ -4337,7 +4356,8 @@ let mCharts = [];         // charts inside modal, destroyed on close
 
 const tasks      = ()=> visibleData().filter(r=>r.task && !r.archived);
 const deptOf     = u => Object.keys(roster).filter(d=>(roster[d]||[]).includes(u));
-const hoursOf    = rs => rs.reduce((a,r)=>a+(r.hours||0),0);
+/* routed through the centralised per-record calculation */
+const hoursOf    = rs => Math.round(rs.reduce((a,r)=>a+hoursSavedPerMonth(r),0)*100)/100;
 const dash       = v => (v===''||v==null) ? '<span style="color:var(--line)">—</span>' : esc(v);
 const syncTime   = ()=> lastSync ? lastSync.toLocaleString('en-GB') : 'Not synced yet';
 const pillS      = r => `<span class="pill s-${r.status.replace(/\s/g,'')}">${r.status}</span>`;
@@ -4347,6 +4367,99 @@ const noneMsg    = t => `<div class="empty">${t}</div>`;
 /* has before/after work-time data recorded */
 function hasTime(r){
   return r.manTime!=='' && r.manTime!=null && r.autoTime!=='' && r.autoTime!=null;
+}
+
+/* ================= CENTRALISED KPI CALCULATION =================
+   One source of truth for every derived number, so the Dashboard, the
+   Analytics tab, the KPI drill-downs and any report can never disagree.
+
+   Hours saved per month, per record:
+     - When both work times are recorded, DERIVE it, exactly as the spec
+       describes:  (manual - automated) x executions per month.
+     - Otherwise fall back to the `hours` value already stored on the
+       record. Some records were entered before work-time capture existed
+       and hold a real, hand-entered figure; deriving 0 for them would
+       silently discard genuine data.
+   Both paths agree where both exist — verified against the live records,
+   e.g. 2.45hr - 5min = 2.3667/exec x 22 = 52.07, matching the stored 52.07.
+=============================================================== */
+function hoursSavedPerExecution(r){
+  if(!hasTime(r)) return null;                       // not derivable
+  return toHrs(r.manTime, r.manUnit) - toHrs(r.autoTime, r.autoUnit);
+}
+function hoursSavedPerMonth(r){
+  const per = hoursSavedPerExecution(r);
+  if(per === null) return Number(r.hours) || 0;      // stored figure
+  return per * (Number(r.runs) || 0);
+}
+function monthlySavedFor(r){
+  const v = Number(r.monthlyCostSaved);
+  return isFinite(v) ? v : 0;
+}
+
+/**
+ * Every KPI in one pass over one agreed set of records.
+ * `rows` defaults to the caller's visible, non-archived, real automations —
+ * so workspace scoping and archiving are respected everywhere automatically.
+ */
+function computeKPIs(rows){
+  const rs = rows || kpiRecords();
+  const out = {
+    total:rs.length, live:0, inProgress:0, planned:0, successful:0,
+    completed:0, onHold:0, cancelled:0, high:0, critical:0,
+    processAutomation:0, hours:0, hoursDerived:0, hoursStored:0,
+    achievements:0, executions:0, money:{}
+  };
+  rs.forEach(r=>{
+    switch(r.status){
+      case 'Live':        out.live++;        break;
+      case 'In Progress': out.inProgress++;  break;
+      case 'Planned':     out.planned++;     break;
+      case 'Successful':  out.successful++;  break;
+      case 'Completed':   out.completed++;   break;
+      case 'On Hold':     out.onHold++;      break;
+      case 'Cancelled':   out.cancelled++;   break;
+    }
+    if(r.prio==='High')     out.high++;
+    if(r.prio==='Critical') out.critical++;
+
+    if(hasTime(r)) out.processAutomation++;
+
+    const h = hoursSavedPerMonth(r);
+    out.hours += h;
+    if(hasTime(r)) out.hoursDerived += h; else out.hoursStored += h;
+
+    out.executions   += Number(r.runs) || 0;
+    out.achievements += (r.keyAchievement || []).length;
+
+    const m = monthlySavedFor(r);
+    if(m > 0){ const c = r.currency || 'BDT'; out.money[c] = (out.money[c] || 0) + m; }
+  });
+  out.hours = Math.round(out.hours * 100) / 100;
+  return out;
+}
+
+/* ---------- Reason for High Priority ----------
+   No record currently carries a dedicated `reason`, so rather than invent
+   one this reuses the record's own Notes as the stated justification —
+   exactly the `r.reason || r.notes` fallback the High Priority drill-down
+   already used. Once someone types a real reason into the cell it is stored
+   on `reason` and takes precedence, leaving Notes untouched. */
+function reasonText(r){
+  const explicit = String(r.reason || '').trim();
+  if(explicit) return explicit;
+  return String(r.notes || '').trim();
+}
+function reasonCell(r){
+  const txt = reasonText(r);
+  if(!txt) return '<span style="color:var(--mut2)">—</span>';
+  const fromNotes = !String(r.reason || '').trim();
+  return `<span${fromNotes ? ' style="color:var(--mut)"' : ''}>${esc(txt)}</span>`;
+}
+
+/* the agreed record set: real automations, in scope, not archived */
+function kpiRecords(){
+  return visibleData().filter(r => r && r.task && String(r.task).trim() && !r.archived);
 }
 
 /* comparison table inside the Process Automation modal */
@@ -4632,7 +4745,8 @@ const KPI_VIEWS = {
         rs.map(r=>({cells:[
           `<b>${esc(r.task)}</b>`, esc(r.dept),
           (r.owners||[]).map(o=>`<span class="tag">${esc(o)}</span>`).join('')||'—',
-          dash(r.reason||r.notes), pillS(r), dash(r.eta), (r.hours||0)+' hrs/mo'
+          dash(reasonText(r)), pillS(r), dash(r.eta),
+          (Math.round(hoursSavedPerMonth(r)*100)/100)+' hrs/mo'
         ]})), {empty:'No high priority automations.'})
     };
   },
@@ -4725,18 +4839,20 @@ const KPI_VIEWS = {
 
   /* ---- HOURS SAVED ---- */
   hours: ()=>{
-    const liveRs = tasks().filter(r=>r.status==='Live');
+    // every time-saving automation counts, not only status "Live"
+    const liveRs = tasks();
     const total  = hoursOf(liveRs);
     const byDept = Object.keys(roster).map(d=>({k:d,v:hoursOf(liveRs.filter(r=>r.dept===d))}))
                      .filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
     const byUser = allUsers().map(u=>({k:u,v:hoursOf(liveRs.filter(r=>(r.owners||[]).includes(u)))}))
                      .filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
     const byStat = STATUSES.map(s=>hoursOf(tasks().filter(r=>r.status===s)));
-    const top5   = [...tasks()].sort((a,b)=>(b.hours||0)-(a.hours||0)).filter(r=>r.hours>0).slice(0,5);
+    const top5   = [...tasks()].map(r=>({r,h:hoursSavedPerMonth(r)}))
+                     .filter(x=>x.h>0).sort((a,b)=>b.h-a.h).slice(0,5);
 
     return {
       title:`Monthly Hours Saved (${total.toLocaleString()})`,
-      sub:'Based on automations with status Live',
+      sub:'Across every automation that saves time',
       render:()=>`
         <div class="mbox" style="margin-bottom:16px">
           <h4>Total Hours Saved</h4>
@@ -4752,8 +4868,8 @@ const KPI_VIEWS = {
         </div>
         <div class="mbox" style="margin-bottom:16px"><h4>Top 5 Automations Saving the Most Time</h4>
           ${mTable(['#','Automation Name','Department','Status','Hours Saved'],
-            top5.map((r,i)=>({cells:[i+1,`<b>${esc(r.task)}</b>`,esc(r.dept),pillS(r),
-              `<b>${(r.hours||0).toLocaleString()}</b> hrs/mo`]})),
+            top5.map((x,i)=>({cells:[i+1,`<b>${esc(x.r.task)}</b>`,esc(x.r.dept),pillS(x.r),
+              `<b>${(Math.round(x.h*100)/100).toLocaleString()}</b> hrs/mo`]})),
             {empty:'No hours recorded yet.'})}</div>
         <div class="mgrid">
           <div class="mbox"><h4>Breakdown by Department</h4>

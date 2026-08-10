@@ -25,3 +25,7 @@ desktop.ini
 # logs
 *.log
 npm-debug.log*
+
+# fetched production data snapshot - never commit business data
+live.json
+prod.html

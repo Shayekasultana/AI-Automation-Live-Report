@@ -3925,6 +3925,7 @@ async function commitEdit(){
   // rebuild any open modal table before we look the cell up again
   if(document.getElementById('money_table')) renderMoneyTable();
   if(document.getElementById('p_out') && typeof paintProcess==='function') paintProcess();
+  if(document.getElementById('m_out') && typeof paintTotal==='function') paintTotal();
   // When a modal is open the edit happened inside it, so confirm there first —
   // otherwise fields that exist in BOTH places (task, dept, status, runs,
   // monthlyCostSaved) would flash "Saved" on the register table hidden behind it.
@@ -4955,17 +4956,40 @@ const KPI_VIEWS = {
 function jsq(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 
 /* live-filtered table inside the Total modal */
+/* Built directly rather than through mTable() so each cell can carry the
+   data-dt-row/data-f hooks the shared edit() engine needs — the same
+   approach renderMoneyTable() and paintProcess() use. Reason for High
+   Priority carries the record's own stated reason, falling back to its
+   Notes exactly as the register does, so the two never disagree. */
 function paintTotal(){
   const q=(m_q.value||'').toLowerCase(), st=m_st.value, dp=m_dp.value;
-  const rs=tasks().filter(r=>(!st||r.status===st)&&(!dp||r.dept===dp)&&
-    (!q||((r.task||'')+(r.dept||'')+(r.owners||[]).join('')+(r.developer||[]).join('')).toLowerCase().includes(q)));
-  m_out.innerHTML=mTable(
-    ['Automation Name','Department','User','Developer','Status','Priority','Hours Saved/Month'],
-    rs.map(r=>({cells:[`<b>${esc(r.task)}</b>${(r.createdAt||r.updatedAt)?`<div class="rowdates">${r.createdAt?`Created: ${fmtDateShort(r.createdAt)}`:''}${r.createdAt&&r.updatedAt?' · ':''}${r.updatedAt?`Updated: ${fmtDateShort(r.updatedAt)}`:''}</div>`:''}`,esc(r.dept),
-      (r.owners||[]).map(o=>`<span class="tag">${esc(o)}</span>`).join('')||'—',
-      (r.developer||[]).map(o=>`<span class="tag">${esc(o)}</span>`).join('')||'<span style="color:var(--mut2)">— Not Assigned —</span>',
-      pillS(r),pillP(r),(r.hours||0)+' hrs/mo']})),
-    {empty:'No automations match these filters.'});
+  const rs=data.map((r,i)=>({r,i}))
+    .filter(({r})=>inViewScope(r) && r.task && !r.archived)
+    .filter(({r})=>(!st||r.status===st)&&(!dp||r.dept===dp)&&
+      (!q||((r.task||'')+(r.dept||'')+(r.owners||[]).join('')+(r.developer||[]).join('')
+          +reasonText(r)).toLowerCase().includes(q)));
+
+  if(!rs.length){ m_out.innerHTML=noneMsg('No automations match these filters.'); return; }
+
+  const ed=(i,f)=>`class="ed" data-dt-row="${i}" data-f="${f}" onclick="edit(${i},'${f}',this)"`;
+  m_out.innerHTML=`<table><thead><tr>
+      <th>Automation Name</th><th>Department</th><th>User</th><th>Developer</th>
+      <th>Status</th><th>Priority</th><th>Reason for High Priority</th><th>Hours Saved/Month</th>
+    </tr></thead><tbody>
+    ${rs.map(({r,i})=>`<tr>
+      <td ${ed(i,'task')}><b>${esc(r.task)}</b>${(r.createdAt||r.updatedAt)
+        ?`<div class="rowdates">${r.createdAt?`Created: ${fmtDateShort(r.createdAt)}`:''}${
+          r.createdAt&&r.updatedAt?' · ':''}${r.updatedAt?`Updated: ${fmtDateShort(r.updatedAt)}`:''}</div>`:''}</td>
+      <td ${ed(i,'dept')}>${esc(r.dept)}</td>
+      <td ${ed(i,'owners')}>${(r.owners||[]).map(o=>`<span class="tag">${esc(o)}</span>`).join('')||'—'}</td>
+      <td ${ed(i,'developer')}>${(r.developer||[]).map(o=>`<span class="tag">${esc(o)}</span>`).join('')
+        ||'<span style="color:var(--mut2)">— Not Assigned —</span>'}</td>
+      <td ${ed(i,'status')}>${pillS(r)}</td>
+      <td ${ed(i,'prio')}>${pillP(r)}</td>
+      <td class="ed reason-cell" data-dt-row="${i}" data-f="reason" onclick="edit(${i},'reason',this)">${reasonCell(r)}</td>
+      <td ${ed(i,'hours')}>${Math.round(hoursSavedPerMonth(r)*100)/100} hrs/mo</td>
+    </tr>`).join('')}
+    </tbody></table>`;
 }
 
 /* ---- drill-downs ---- */

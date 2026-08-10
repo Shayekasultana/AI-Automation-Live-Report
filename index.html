@@ -3922,7 +3922,9 @@ async function commitEdit(){
   const cell = editing; editing = null;
 
   render();
-  if(document.getElementById('money_table')) renderMoneyTable();   // rebuild before we look the cell up
+  // rebuild any open modal table before we look the cell up again
+  if(document.getElementById('money_table')) renderMoneyTable();
+  if(document.getElementById('p_out') && typeof paintProcess==='function') paintProcess();
   // When a modal is open the edit happened inside it, so confirm there first —
   // otherwise fields that exist in BOTH places (task, dept, status, runs,
   // monthlyCostSaved) would flash "Saved" on the register table hidden behind it.
@@ -4479,11 +4481,23 @@ function kpiRecords(){
 }
 
 /* comparison table inside the Process Automation modal */
+/* Built directly rather than through mTable() so each cell can carry the
+   data-dt-row / data-f hooks the shared edit() engine needs — the same
+   approach renderMoneyTable() uses.
+
+   Editable here are the SOURCE fields only: Automation, Department, Before
+   (Manual), After (Automated), Runs/Month and Status. Saved/Run and Reduction
+   are pure arithmetic on the two work times, so they update themselves the
+   moment you change either — offering to edit them would be offering to edit
+   a result. Saved/Month is editable only where it IS the stored value, i.e.
+   on records with no work times; where both times exist it is derived and
+   any typed figure would be overwritten on the next render. */
 function paintProcess(){
   const q=(p_q.value||'').toLowerCase(), dp=p_dp.value, sort=p_sort.value;
-  let rs=tasks().filter(isProcessAutomation)
-    .filter(r=>(!dp||r.dept===dp)&&(!q||((r.task||'')+(r.dept||'')+(r.manual||'')).toLowerCase().includes(q)))
-    .map(r=>{
+  let rs=data.map((r,i)=>({r,i}))
+    .filter(({r})=>inViewScope(r) && r.task && !r.archived && isProcessAutomation(r))
+    .filter(({r})=>(!dp||r.dept===dp)&&(!q||((r.task||'')+(r.dept||'')+(r.manual||'')).toLowerCase().includes(q)))
+    .map(({r,i})=>{
       // before/after is only known when both work times were recorded;
       // the monthly saving is always known, via the central calculation
       const known = hasTime(r);
@@ -4491,35 +4505,49 @@ function paintProcess(){
       const ah = known ? toHrs(r.autoTime,r.autoUnit) : null;
       const per = known ? mh-ah : null;
       const monthly = hoursSavedPerMonth(r);
-      return {r, known, mh, ah, per, monthly, pct: (known && mh) ? Math.round(per/mh*100) : null};
+      return {r, i, known, mh, ah, per, monthly, pct: (known && mh) ? Math.round(per/mh*100) : null};
     });
 
   rs.sort((a,b)=> sort==='name' ? a.r.task.localeCompare(b.r.task)
                 : sort==='pct'  ? (b.pct??-1)-(a.pct??-1)
                 : b.monthly-a.monthly);
 
+  if(!rs.length){ p_out.innerHTML = noneMsg('No process automations recorded yet.'); return; }
+
   const mins = h => `${Math.round(h*60)} min`;
   const unknown = '<span style="color:var(--mut2)">—</span>';
-  p_out.innerHTML = mTable(
-    ['Automation Name','Department','Before (Manual)','After (Automated)','Saved / Run','Runs / Month','Saved / Month','Reduction','Status'],
-    rs.map(x=>{
+  const ed = (i,f) => `class="ed" data-dt-row="${i}" data-f="${f}" onclick="edit(${i},'${f}',this)"`;
+
+  p_out.innerHTML = `<table><thead><tr>
+      <th>Automation Name</th><th>Department</th><th>Before (Manual)</th><th>After (Automated)</th>
+      <th>Saved / Run</th><th>Runs / Month</th><th>Saved / Month</th><th>Reduction</th><th>Status</th>
+    </tr></thead><tbody>
+    ${rs.map(x=>{
       const neg = x.known && x.per<=0;
-      return {cells:[
-        `<b>${esc(x.r.task)}</b>${x.r.manual?`<div style="color:var(--mut);font-size:11px;margin-top:2px">${esc(x.r.manual)}</div>`:''}`,
-        esc(x.r.dept),
-        x.known?`<span style="color:var(--danger)">${mins(x.mh)}</span>`:unknown,
-        x.known?`<span style="color:var(--warn)">${mins(x.ah)}</span>`:unknown,
-        !x.known?unknown:(neg?'<span style="color:var(--danger)">—</span>':`<b style="color:var(--ok)">${mins(x.per)}</b>`),
-        x.r.runs||0,
-        x.monthly>0?`<b>${Math.round(x.monthly*100)/100} hrs</b>`:'<span style="color:var(--danger)">0 hrs</span>',
-        x.pct==null?unknown
+      return `<tr>
+        <td ${ed(x.i,'task')}><b>${esc(x.r.task)}</b>${x.r.manual
+          ?`<div style="color:var(--mut);font-size:11px;margin-top:2px">${esc(x.r.manual)}</div>`:''}</td>
+        <td ${ed(x.i,'dept')}>${esc(x.r.dept)}</td>
+        <td ${ed(x.i,'manTime')}>${x.known
+          ?`<span style="color:var(--danger)">${mins(x.mh)}</span>`:unknown}</td>
+        <td ${ed(x.i,'autoTime')}>${x.known
+          ?`<span style="color:var(--warn)">${mins(x.ah)}</span>`:unknown}</td>
+        <td>${!x.known?unknown:(neg?'<span style="color:var(--danger)">—</span>'
+          :`<b style="color:var(--ok)">${mins(x.per)}</b>`)}</td>
+        <td ${ed(x.i,'runs')}>${x.r.runs||0}</td>
+        ${x.known
+          ? `<td title="Calculated from the work times and executions">${x.monthly>0
+              ?`<b>${Math.round(x.monthly*100)/100} hrs</b>`:'<span style="color:var(--danger)">0 hrs</span>'}</td>`
+          : `<td ${ed(x.i,'hours')}>${x.monthly>0
+              ?`<b>${Math.round(x.monthly*100)/100} hrs</b>`:'<span style="color:var(--danger)">0 hrs</span>'}</td>`}
+        <td>${x.pct==null?unknown
           :(neg?'<span class="pill p-High">No saving</span>'
                :`<div class="bar"><span style="width:${Math.max(x.pct,3)}%"></span></div>
-                 <span style="font-size:11px;color:var(--mut)">${x.pct}%</span>`),
-        pillS(x.r)
-      ]};
-    }),
-    {empty:'No process automations recorded yet.'});
+                 <span style="font-size:11px;color:var(--mut)">${x.pct}%</span>`)}</td>
+        <td ${ed(x.i,'status')}>${pillS(x.r)}</td>
+      </tr>`;
+    }).join('')}
+    </tbody></table>`;
 }
 
 /* generic table builder */

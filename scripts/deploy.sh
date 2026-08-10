@@ -58,9 +58,16 @@ preflight(){
   fi
 
   [ -f "$APP_FILE" ] || die "$APP_FILE not found"
-  node --check <(sed -n '/^<script>$/,/^<\/script>$/p' "$APP_FILE" | sed '1d;$d') 2>/dev/null \
-    && ok "$APP_FILE script block parses" \
-    || die "$APP_FILE has a JavaScript syntax error — refusing to deploy"
+  # must be a real file ending in .js — node refuses to --check a process
+  # substitution FD, which would silently look like a syntax error
+  local tmpjs; tmpjs="$(mktemp -t appcheck.XXXXXX).js"
+  sed -n '/^<script>$/,/^<\/script>$/p' "$APP_FILE" | sed '1d;$d' > "$tmpjs"
+  if node --check "$tmpjs" 2>/dev/null; then
+    rm -f "$tmpjs"; ok "$APP_FILE script block parses"
+  else
+    node --check "$tmpjs" 2>&1 | head -5 >&2
+    rm -f "$tmpjs"; die "$APP_FILE has a JavaScript syntax error — refusing to deploy"
+  fi
 
   ping -c1 -W2 "$PROD_HOST" >/dev/null 2>&1 && ok "$PROD_HOST reachable" \
     || die "$PROD_HOST unreachable"

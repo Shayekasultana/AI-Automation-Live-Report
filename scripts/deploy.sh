@@ -69,8 +69,14 @@ preflight(){
     rm -f "$tmpjs"; die "$APP_FILE has a JavaScript syntax error — refusing to deploy"
   fi
 
-  ping -c1 -W2 "$PROD_HOST" >/dev/null 2>&1 && ok "$PROD_HOST reachable" \
-    || die "$PROD_HOST unreachable"
+  # ping flags differ between Windows (ping.exe -n/-w) and Linux/macOS (-c/-W),
+  # and this script is run from both, so try each
+  if ping -n 1 -w 2000 "$PROD_HOST" >/dev/null 2>&1 \
+     || ping -c 1 -W 2 "$PROD_HOST" >/dev/null 2>&1; then
+    ok "$PROD_HOST reachable"
+  else
+    die "$PROD_HOST unreachable"
+  fi
 }
 
 remote_state(){
